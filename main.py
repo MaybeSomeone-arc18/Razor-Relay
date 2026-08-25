@@ -34,62 +34,8 @@ def root_redirect():
     return RedirectResponse(url="/ui")
 
 # --- Redis Protection Layer (Upstash REST & In-Memory Fallback) ---
-class RedisClient:
-    """Wrapper for Upstash Redis via REST API, with an in-memory fallback."""
-    def __init__(self, url: str, token: str):
-        self.url = url.rstrip('/') if url else None
-        self.headers = {"Authorization": f"Bearer {token}"} if token else {}
-        self._mock_db: Dict[str, Any] = {}
-    
-    def _call(self, *args):
-        if not self.url or not self.url.startswith("http"):
-            # Fallback to simple in-memory mock if URL is not configured
-            return self._mock_call(*args)
-            
-        try:
-            res = requests.post(self.url, headers=self.headers, json=list(args), timeout=5)
-            res.raise_for_status()
-            return res.json().get('result')
-        except Exception as e:
-            logger.error(f"Redis error: {e}")
-            return self._mock_call(*args) # Fallback on error
-            
-    def _mock_call(self, *args):
-        cmd = args[0].upper()
-        key = args[1] if len(args) > 1 else None
-        
-        if cmd == "SET":
-            val = args[2]
-            opts = args[3:]
-            if "NX" in opts and key in self._mock_db:
-                return None
-            self._mock_db[key] = val
-            return "OK"
-        elif cmd == "GET":
-            return self._mock_db.get(key)
-        elif cmd == "INCRBYFLOAT":
-            val = float(args[2])
-            current = float(self._mock_db.get(key, 0.0))
-            self._mock_db[key] = str(current + val)
-            return self._mock_db[key]
-        return None
-
-    def setnx_ex(self, key: str, value: str, expire_seconds: int):
-        """SETNX with sliding lock expiry."""
-        res = self._call("SET", key, value, "NX", "EX", expire_seconds)
-        return res == "OK"
-        
-    def get(self, key: str):
-        return self._call("GET", key)
-        
-    def set(self, key: str, value: str):
-        return self._call("SET", key, value)
-        
-    def incrbyfloat(self, key: str, value: float):
-        res = self._call("INCRBYFLOAT", key, str(value))
-        return float(res) if res else 0.0
-
-redis_client = RedisClient(UPSTASH_URL, UPSTASH_TOKEN)
+from database.redis_client import RedisStateStore
+redis_client = RedisStateStore(UPSTASH_URL, UPSTASH_TOKEN)
 
 # --- State WAL (Write-Ahead Log) ---
 class WAL:
