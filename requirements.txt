@@ -5,4 +5,5 @@ pytest
 requests
 razorpay
 python-dotenv
+httpx
 httpx2
