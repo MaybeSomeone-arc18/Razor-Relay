@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razor-Relay Zero-Trust Gateway</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0A0A0C;
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --closed-color: #00FF66;
+            --half-open-color: #FFCC00;
+            --open-color: #FF3366;
+            --text-main: #FFFFFF;
+            --text-muted: #888888;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1, h2, h3, h4 { font-weight: 600; margin: 0 0 16px 0; }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 500px;
+            width: 100%;
+            height: 100%;
+        }
+
+        .panel {
+            padding: 40px;
+            overflow-y: auto;
+            border-right: 1px solid var(--glass-border);
+        }
+
+        .card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            color: var(--text-muted);
+        }
+
+        input[type="text"], input[type="number"], input[type="range"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+            box-sizing: border-box;
+        }
+        
+        input[type="range"] { padding: 0; margin-bottom: 8px; }
+
+        .slider-value { text-align: right; font-size: 0.85em; color: var(--text-muted); margin-bottom: 16px; }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            color: var(--text-main);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover { background: rgba(255, 255, 255, 0.2); }
+
+        .terminal {
+            background: #050505;
+            padding: 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            color: #A0A0A0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-header {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .log-container {
+            display: flex;
+            flex-direction: column-reverse;
+            flex-grow: 1;
+        }
+
+        .log-entry {
+            margin-bottom: 16px;
+            word-wrap: break-word;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding-bottom: 16px;
+        }
+        
+        .log-entry:last-child { border-bottom: none; }
+
+        .log-entry .timestamp { color: #555; margin-right: 8px; }
+        .log-entry .success { color: var(--closed-color); }
+        .log-entry .error { color: var(--open-color); }
+        .log-entry .info { color: var(--half-open-color); }
+        .log-entry pre { margin: 8px 0 0 0; color: #CCC; white-space: pre-wrap; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px;}
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 0 0 15px currentColor;
+            transition: all 0.3s;
+        }
+        .badge.closed { color: var(--closed-color); border: 1px solid var(--closed-color); }
+        .badge.half-open { color: var(--half-open-color); border: 1px solid var(--half-open-color); }
+        .badge.open { color: var(--open-color); border: 1px solid var(--open-color); }
+        
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="panel">
+        <div class="header-section">
+            <div>
+                <h1>Razor-Relay Gateway</h1>
+                <p style="color: var(--text-muted); margin: 0;">Zero-Trust Infrastructure Console</p>
+            </div>
+            <div>
+                <span id="circuit-badge" class="badge closed">CLOSED</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Inject Switch Chaos</h3>
+            <p style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 16px;">Manipulate telemetry to observe circuit breaker failover dynamics.</p>
+            <label>Latency (ms)</label>
+            <input type="range" id="chaos-latency" min="0" max="1000" value="50" oninput="updateSlider('latency-val', this.value, ' ms')">
+            <div class="slider-value" id="latency-val">50 ms</div>
+            
+            <label>Rolling Error Rate (0.0 - 1.0)</label>
+            <input type="range" id="chaos-error" min="0" max="1" step="0.01" value="0.0" oninput="updateSlider('error-val', this.value, '')">
+            <div class="slider-value" id="error-val">0.0</div>
+
+            <button onclick="injectChaos()">Apply Telemetry</button>
+        </div>
+
+        <div class="card">
+            <h3>Simulate Agent Purchase</h3>
+            <div class="grid-2">
+                <div>
+                    <label>Mandate ID</label>
+                    <input type="text" id="sim-mandate-id" value="agent_tx_999">
+                </div>
+                <div>
+                    <label>Requested Amount (₹)</label>
+                    <input type="number" id="sim-amount" value="500">
+                </div>
+            </div>
+            <button onclick="simulatePurchase()">Dispatch UAP Payload</button>
+        </div>
+
+        <div class="grid-2">
+            <div class="card" style="margin-bottom: 0;">
+                <h3>Instant Revocation</h3>
+                <label>Mandate ID</label>
+                <input type="text" id="revoke-mandate-id" value="agent_tx_999">
+                <button onclick="revokeMandate()" style="background: rgba(255,51,102,0.1); border-color: var(--open-color); color: var(--open-color);">Revoke</button>
+            </div>
+
+            <div class="card" style="margin-bottom: 0;">
+                <h3>Execute Escrow</h3>
+                <label>Completion Score (0-1)</label>
+                <input type="number" id="escrow-score" value="0.95" step="0.01">
+                <button onclick="settleEscrow()" style="background: rgba(0,255,102,0.1); border-color: var(--closed-color); color: var(--closed-color);">Settle</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="terminal">
+        <div class="terminal-header">
+            <h3 style="margin: 0;">Live Audit Trail</h3>
+            <button onclick="clearLogs()" style="width: auto; padding: 6px 12px; font-size: 0.8em;">Clear</button>
+        </div>
+        <div class="log-container" id="log-container">
+            <!-- Logs appear here -->
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateSlider(id, val, suffix) {
+        document.getElementById(id).innerText = val + suffix;
+    }
+
+    function addLog(action, type, data) {
+        const container = document.getElementById('log-container');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
+        const colorClass = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+        
+        entry.innerHTML = `
+            <div>
+                <span class="timestamp">[${timestamp}]</span>
+                <span class="${colorClass}">[${action}]</span>
+            </div>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+        
+        container.prepend(entry);
+    }
+
+    function updateBadge(state) {
+        const badge = document.getElementById('circuit-badge');
+        badge.innerText = state;
+        badge.className = 'badge';
+        if (state === 'CLOSED') badge.classList.add('closed');
+        else if (state === 'HALF_OPEN') badge.classList.add('half-open');
+        else badge.classList.add('open');
+    }
+
+    async function injectChaos() {
+        const latency = parseFloat(document.getElementById('chaos-latency').value);
+        const error = parseFloat(document.getElementById('chaos-error').value);
+        
+        try {
+            const res = await fetch('/v1/relay/chaos/inject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ latency_ms: latency, rolling_error_rate: error })
+            });
+            const data = await res.json();
+            addLog('CHAOS_INJECT', 'info', data);
+            if (data.circuit_state) updateBadge(data.circuit_state);
+        } catch (e) {
+            addLog('CHAOS_INJECT', 'error', { error: e.message });
+        }
+    }
+
+    async function simulatePurchase() {
+        const mandateId = document.getElementById('sim-mandate-id').value;
+        const amount = parseFloat(document.getElementById('sim-amount').value);
+        const nonce = crypto.randomUUID();
+
+        // Construct mock signature bypassing HMAC on frontend, let backend reject if needed or accept mock
+        // Since backend requires valid HMAC to pass rule #7, we'll generate a valid HMAC using crypto API (if we had secret). 
+        // For the sake of the hackathon dashboard, we will send 'invalid_signature_mock' if we don't have the key, 
+        // OR we can just comment out the HMAC check on backend for pure UI demo, OR send a precomputed one.
+        // Given backend enforces it, we might get 401. Let's send a dummy and see.
+        
+        const payload = {
+            mandate_id: mandateId,
+            delegation: {
+                human_root_hash: "ui_hash",
+                primary_agent_id: "ui_agent",
+                sub_agent_id: null,
+                delegation_depth: 1
+            },
+            limits: {
+                per_transaction_cap: 1000.0,
+                daily_cap: 5000.0,
+                price_slippage_percent: 5.0
+            },
+            scope: "dashboard_sim",
+            expiry: Math.floor(Date.now() / 1000) + 3600,
+            nonce: nonce,
+            requested_amount: amount,
+            quoted_price: amount,
+            signature: "ui_signature" // Will likely fail HMAC on backend unless bypassed
+        };
+
+        try {
+            const res = await fetch('/v1/relay/gateway/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                addLog('GATEWAY_EXECUTE', 'success', data);
+                if (data.routing_state) updateBadge(data.routing_state);
+            } else {
+                addLog('GATEWAY_REJECTED', 'error', data);
+            }
+        } catch (e) {
+            addLog('GATEWAY_ERROR', 'error', { error: e.message });
+        }
+    }
+
+    async function revokeMandate() {
+        const mandateId = document.getElementById('revoke-mandate-id').value;
+        try {
+            const res = await fetch(`/v1/relay/mandate/revoke?mandate_id=${encodeURIComponent(mandateId)}`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            addLog('REVOKE_MANDATE', 'info', data);
+        } catch (e) {
+            addLog('REVOKE_ERROR', 'error', { error: e.message });
+        }
+    }
+
+    async function settleEscrow() {
+        const mandateId = document.getElementById('revoke-mandate-id').value; // reuse ID
+        const score = parseFloat(document.getElementById('escrow-score').value);
+        
+        const payload = {
+            mandate_id: mandateId,
+            verification: { completion_score: score },
+            amount_in_escrow: 500.0 // Hardcoded for demo
+        };
+
+        try {
+            const res = await fetch('/v1/relay/escrow/settle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            addLog('ESCROW_SETTLEMENT', 'success', data);
+        } catch (e) {
+            addLog('ESCROW_ERROR', 'error', { error: e.message });
+        }
+    }
+
+    function clearLogs() {
+        document.getElementById('log-container').innerHTML = '';
+    }
+</script>
+</body>
+</html>
