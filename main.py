@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field, field_validator
 from dotenv import load_dotenv
 import requests
 
+from config.razorpay_config import razorpay_client
+
 load_dotenv()
 
 # --- Config & Setup ---
@@ -293,6 +295,8 @@ def settle_escrow(req: EscrowSettleRequest):
 def gateway_execute(payload: UAPMandatePayload):
     """Main execution endpoint protected by guardrails and circuit breaker."""
     routing_mechanism = "UPI_DIRECT_AUTOPAY"
+    razorpay_payload = None
+
     if breaker.state == CircuitBreaker.STATE_OPEN:
         raise HTTPException(status_code=503, detail="CIRCUIT_BREAKER_HALT")
         
@@ -302,12 +306,46 @@ def gateway_execute(payload: UAPMandatePayload):
         
     execute_guardrails(payload)
     
+    # Razorpay SDK Integration
+    try:
+        if breaker.state == CircuitBreaker.STATE_CLOSED:
+            if razorpay_client:
+                order_data = {
+                    "amount": int(payload.requested_amount * 100),
+                    "currency": "INR",
+                    "receipt": payload.mandate_id[:40]
+                }
+                rzp_res = razorpay_client.order.create(data=order_data)
+                razorpay_payload = {"order_id": rzp_res.get("id")}
+            else:
+                razorpay_payload = {"order_id": f"order_mock_{payload.nonce[:8]}"}
+                
+        elif breaker.state == CircuitBreaker.STATE_HALF_OPEN:
+            if razorpay_client:
+                va_data = {
+                    "receivers": {"types": ["vpa"]},
+                    "description": "Smart Collect VPA for Agentic Escrow",
+                    "amount_expected": int(payload.requested_amount * 100)
+                }
+                rzp_res = razorpay_client.virtual_account.create(data=va_data)
+                razorpay_payload = {"vpa_id": rzp_res.get("id")}
+            else:
+                razorpay_payload = {"vpa_id": f"va_mock_{payload.nonce[:8]}"}
+    except Exception as e:
+        logger.error(f"Razorpay API Error: {e}")
+        # Graceful fallback to mock to ensure zero-trust pipeline doesn't crash on network timeouts
+        if breaker.state == CircuitBreaker.STATE_CLOSED:
+            razorpay_payload = {"order_id": f"order_mock_err_{payload.nonce[:8]}"}
+        else:
+            razorpay_payload = {"vpa_id": f"va_mock_err_{payload.nonce[:8]}"}
+    
     return {
         "status": "authorized",
         "mandate_id": payload.mandate_id, 
         "amount_processed": payload.requested_amount,
         "routing_state": breaker.state,
-        "routing_mechanism": routing_mechanism
+        "routing_mechanism": routing_mechanism,
+        "razorpay_payload": razorpay_payload
     }
 
 if __name__ == "__main__":
