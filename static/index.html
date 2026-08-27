@@ -71,6 +71,30 @@
     </div>
   </nav>
 
+  <!-- Judge Quick-Start Guide Banner -->
+  <div id="guide-banner" class="w-full bg-slate-900 text-white border-b border-slate-700">
+    <div class="max-w-[1600px] mx-auto px-6 py-4">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-bold text-sm tracking-wide text-blade-teal-neon uppercase">💡 Judge Evaluation Guide // 30-Second Quick Walkthrough</h2>
+        <button onclick="document.getElementById('guide-content').classList.toggle('hidden')" class="text-xs font-mono font-bold hover:text-slate-300 transition-colors">[ Hide / Show ]</button>
+      </div>
+      <div id="guide-content" class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+        <div class="space-y-1">
+          <div class="font-bold text-white mb-2"><span class="text-blade-teal-neon mr-1">01.</span> Mandate Purchase</div>
+          <p class="text-slate-400">Click <b>Dispatch UAP Payload</b> &rarr; Validates HMAC signatures, per-tx ceilings, and daily aggregate caps.</p>
+        </div>
+        <div class="space-y-1">
+          <div class="font-bold text-white mb-2"><span class="text-blade-teal-neon mr-1">02.</span> Task Settlement</div>
+          <p class="text-slate-400">Enter proof JSON and click <b>Route & Verify via LLM</b> &rarr; Ollama LLaMA-3.2 classifies task schema; deterministic Python code executes 1% platform fee payouts or refunds.</p>
+        </div>
+        <div class="space-y-1">
+          <div class="font-bold text-white mb-2"><span class="text-blade-teal-neon mr-1">03.</span> Failover & Revocation</div>
+          <p class="text-slate-400">Adjust chaos sliders or click <b>Revoke Mandate</b> &rarr; Watch the circuit breaker status shift or mandate get blocked in sub-10ms.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Main Content Layout -->
   <main class="flex-1 p-6 max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
     
@@ -91,6 +115,19 @@
           <div class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider">PLATFORM REV (1%)</div>
           <div class="text-xl font-black text-blade-teal-neon font-mono" id="val-rev">₹0.00</div>
         </div>
+      </div>
+
+      <!-- Quick Preset Pills -->
+      <div class="flex flex-wrap gap-2 pt-2">
+        <button onclick="applyPreset('purchase')" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-colors">
+          ⚡ Preset: Valid Purchase
+        </button>
+        <button onclick="applyPreset('attack')" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-colors">
+          🛡️ Preset: Over-Ceiling Attack
+        </button>
+        <button onclick="applyPreset('proof')" class="bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-colors">
+          🤖 Preset: Valid Proof
+        </button>
       </div>
 
       <!-- 1. Simulate Agent Purchase Panel -->
@@ -118,10 +155,12 @@
 
       <!-- 2. AI Verification & Escrow Settlement Panel -->
       <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-[#02042B] dark:text-white mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-[#02042B] dark:text-white flex items-center gap-2" title="Technical Mechanics: Local LLM (LLaMA-3.2) parses task proof into schemas; deterministic Python rules execute payouts (1% fee split) or instant refunds.">
           <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           2. Verification & Escrow Settlement
+          <span class="text-slate-400 hover:text-purple-500 cursor-help ml-auto">ⓘ</span>
         </h3>
+        <p class="text-xs text-slate-400 font-mono mb-4">Local LLM (LLaMA-3.2) parses task proof into schemas; deterministic Python rules execute payouts (1% fee split) or instant refunds.</p>
         <form id="form-settle" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -148,10 +187,12 @@
 
       <!-- 3. Instant Revocation Panel -->
       <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-[#02042B] dark:text-white mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-[#02042B] dark:text-white flex items-center gap-2" title="Technical Mechanics: Human principal revokes agent authorization with <10ms enforcement.">
           <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
           Instant Revocation
+          <span class="text-slate-400 hover:text-red-500 cursor-help ml-auto">ⓘ</span>
         </h3>
+        <p class="text-xs text-slate-400 font-mono mb-4">Human principal revokes agent authorization with &lt;10ms enforcement.</p>
         <form id="form-revoke" class="flex gap-4">
           <div class="flex-1">
             <input type="text" id="inp-r-mandate" value="mnd_alpha_1" placeholder="MANDATE ID" class="w-full bg-slate-50 dark:bg-[#070F1E] border border-slate-200 dark:border-slate-700 text-[#02042B] dark:text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-red-500 font-mono">
@@ -164,10 +205,12 @@
 
       <!-- Chaos Engineering Panel -->
       <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-5 shadow-sm">
-        <h3 class="font-bold text-[#02042B] dark:text-white mb-4 flex items-center gap-2">
+        <h3 class="font-bold text-[#02042B] dark:text-white flex items-center gap-2" title="Technical Mechanics: Simulates bank UPI switch degradation to observe circuit breaker failover to Razorpay Smart Collect Escrow VPAs.">
           <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
           Inject Switch Chaos
+          <span class="text-slate-400 hover:text-yellow-500 cursor-help ml-auto">ⓘ</span>
         </h3>
+        <p class="text-xs text-slate-400 font-mono mb-4">Simulates bank UPI switch degradation to observe circuit breaker failover to Razorpay Smart Collect Escrow VPAs.</p>
         <form id="form-chaos" class="space-y-4">
           <div>
             <div class="flex justify-between mb-1">
@@ -202,8 +245,15 @@
             <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
             <div class="w-3 h-3 rounded-full bg-green-500"></div>
           </div>
-          <div class="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">AUDIT_TRAIL_TERMINAL</div>
+          <div class="flex items-center gap-2">
+            <div class="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 tracking-widest uppercase">AUDIT_TRAIL_TERMINAL</div>
+            <span class="text-slate-400 hover:text-white cursor-help ml-1" title="Monotonic Write-Ahead Log (WAL) showing real-time HMAC digests, state versioning, and zero-trust execution logs.">ⓘ</span>
+          </div>
           <button id="btn-clear" class="text-xs font-mono text-slate-500 hover:text-slate-700 dark:hover:text-white transition-colors bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded">CLEAR</button>
+        </div>
+        
+        <div class="px-4 py-2 bg-slate-100 dark:bg-[#111] border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 font-mono text-center">
+          Monotonic Write-Ahead Log (WAL) showing real-time HMAC digests, state versioning, and zero-trust execution logs.
         </div>
 
         <!-- Terminal Output -->
@@ -439,6 +489,20 @@
         logToTerminal('GATEWAY_REJECTED', 'POST', '/v1/relay/chaos/inject', {error: err.message});
       }
     });
+
+    // 5. Presets Logic
+    window.applyPreset = function(type) {
+      if (type === 'purchase') {
+        document.getElementById('inp-p-mandate').value = 'mnd_alpha_1';
+        document.getElementById('inp-p-amt').value = '5000';
+      } else if (type === 'attack') {
+        document.getElementById('inp-p-mandate').value = 'mnd_alpha_1';
+        document.getElementById('inp-p-amt').value = '999999';
+      } else if (type === 'proof') {
+        document.getElementById('inp-s-schema').value = 'service_rendered';
+        document.getElementById('inp-s-proof').value = '{"summary": "Service rendered successfully", "razorpay_order_id": "order_test_123"}';
+      }
+    };
 
   </script>
 </body>
