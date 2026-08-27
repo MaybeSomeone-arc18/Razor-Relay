@@ -39,8 +39,8 @@ redis_client = RedisStateStore(UPSTASH_URL, UPSTASH_TOKEN)
 
 # --- State WAL (Write-Ahead Log) ---
 class WAL:
-    def __init__(self, filename="state_wal.log"):
-        self.filename = filename
+    def __init__(self, redis_store):
+        self.redis = redis_store
         
     def append(self, action: str, details: dict):
         entry = {
@@ -48,10 +48,14 @@ class WAL:
             "action": action,
             "details": details
         }
-        with open(self.filename, "a") as f:
-            f.write(json.dumps(entry) + "\n")
+        # Push to a Redis list for the specific mandate if available, else general wal
+        mandate_id = details.get("mandate_id", "system")
+        key = f"wal_{mandate_id}"
+        self.redis._call("RPUSH", key, json.dumps(entry))
+        # Also log to console for debugging
+        logger.info(f"WAL [{action}]: {details}")
 
-wal = WAL()
+wal = WAL(redis_client)
 
 # --- Models (Pydantic) ---
 class MerkleDelegationNode(BaseModel):
@@ -88,7 +92,9 @@ class SwitchTelemetry(BaseModel):
     rolling_error_rate: float
 
 class VerificationResult(BaseModel):
-    completion_score: float
+    proof_of_work: str
+    scope: str = "default_task"
+    proof_artifacts: dict = {}  # Structured proof: {razorpay_order_id, artifact_hash, etc.}
 
 class EscrowSettleRequest(BaseModel):
     mandate_id: str
@@ -96,20 +102,20 @@ class EscrowSettleRequest(BaseModel):
     amount_in_escrow: float
 
 # --- Cryptographic Merkle Chain & HMAC Verification ---
-def verify_hmac_signature(payload: UAPMandatePayload, secret: str) -> bool:
-    """Verifies HMAC-SHA256 signatures derived from human root hashes and mandate secrets."""
-    # The cryptographic seed links the human's root hash and the secret key
-    crypto_seed = f"{payload.delegation.human_root_hash}:{secret}".encode('utf-8')
-    
-    payload_dict = payload.model_dump(exclude={'signature'})
+def generate_hmac_signature(payload_dict: dict, secret: str) -> str:
+    """Generates an HMAC-SHA256 signature for a payload dict."""
+    crypto_seed = f"{payload_dict['delegation']['human_root_hash']}:{secret}".encode('utf-8')
     payload_str = json.dumps(payload_dict, sort_keys=True, separators=(',', ':'))
-    
-    expected_mac = hmac.new(
+    return hmac.new(
         crypto_seed,
         payload_str.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
-    
+
+def verify_hmac_signature(payload: UAPMandatePayload, secret: str) -> bool:
+    """Verifies HMAC-SHA256 signatures derived from human root hashes and mandate secrets."""
+    payload_dict = payload.model_dump(exclude={'signature'})
+    expected_mac = generate_hmac_signature(payload_dict, secret)
     return hmac.compare_digest(expected_mac, payload.signature)
 
 # --- Circuit Breaker Switch Failover ---
@@ -122,6 +128,7 @@ class CircuitBreaker:
         self.state = self.STATE_CLOSED
         self.latency = 50.0
         self.error_rate = 0.0
+        self.start_time = time.time()
         
     def update_telemetry(self, telemetry: SwitchTelemetry):
         self.latency = telemetry.latency_ms
@@ -178,14 +185,51 @@ def execute_guardrails(payload: UAPMandatePayload):
     # 7. Cryptographic Verification
     if not verify_hmac_signature(payload, MANDATE_SECRET_KEY):
         logger.warning(f"HMAC mismatch for mandate {payload.mandate_id}. Enforcing failure.")
+        redis_client.incrbyfloat("metrics:attacks_blocked", 1.0)
+        wal.append("SECURITY_INTERVENTION", {"reason": "DELEGATION_CHAIN_INVALID", "mandate_id": payload.mandate_id})
         raise HTTPException(status_code=401, detail="DELEGATION_CHAIN_INVALID")
 
     # Finalize guardrails: accumulate spend
     redis_client.incrbyfloat(daily_spend_key, payload.requested_amount)
+    redis_client.incrbyfloat("metrics:gmv_processed", payload.requested_amount)
     wal.append("MANDATE_AUTHORIZED", {"mandate_id": payload.mandate_id, "amount": payload.requested_amount})
     return True
 
 # --- Endpoints ---
+
+@app.get("/v1/relay/health")
+def health_check():
+    """Health check endpoint reflecting production readiness."""
+    uptime = time.time() - breaker.start_time
+    h_bank = (1 - min(breaker.latency, 300) / 300) * (1 - breaker.error_rate)
+    return {
+        "status": "operational",
+        "circuit_state": breaker.state,
+        "h_bank": round(h_bank, 2),
+        "uptime_seconds": round(uptime, 2)
+    }
+
+@app.get("/v1/relay/metrics")
+def get_metrics():
+    """Returns aggregated business metrics for the dashboard."""
+    gmv = redis_client.get("metrics:gmv_processed") or 0.0
+    attacks = redis_client.get("metrics:attacks_blocked") or 0.0
+    uptime_percent = max(0.0, 100.0 - (breaker.error_rate * 100))
+    return {
+        "total_gmv_processed": float(gmv),
+        "fraud_attacks_blocked": int(float(attacks)),
+        "merchant_uptime_percent": round(uptime_percent, 2),
+        "estimated_platform_revenue": float(gmv) * 0.01
+    }
+
+@app.post("/v1/relay/mandate/sign")
+def sign_mandate(payload: dict):
+    """Generates a valid HMAC-SHA256 signature for the given payload."""
+    try:
+        signature = generate_hmac_signature(payload, MANDATE_SECRET_KEY)
+        return {"signature": signature}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/v1/relay/chaos/inject")
 def inject_chaos(telemetry: SwitchTelemetry):
@@ -200,20 +244,37 @@ def revoke_mandate(mandate_id: str):
     wal.append("MANDATE_REVOKED", {"mandate_id": mandate_id})
     return {"status": "revoked", "mandate_id": mandate_id}
 
+from agents.verifier import ai_verify_task, VerificationDecision, detect_prompt_injection
+
 @app.post("/v1/relay/escrow/settle")
 def settle_escrow(req: EscrowSettleRequest):
-    """Escrow Settlement Endpoint executing dynamic commission splits (1% platform fee) and full/partial refunds."""
-    raw_score = req.verification.completion_score
-    if raw_score >= 0.85:
-        score = 1.0
-    elif raw_score < 0.40:
-        score = 0.0
-    else:
-        score = max(0.0, min(raw_score, 1.0))
-        
+    """Escrow Settlement with AI-routed deterministic verification.
+    
+    The AI classifies the task type → routes to a deterministic verifier.
+    The verifier returns a binary pass/fail. Money never moves on AI "vibes".
+    """
+    # 1. AI-Routed Verification (classification → deterministic check)
+    decision: VerificationDecision = ai_verify_task(
+        scope=req.verification.scope,
+        proof_of_work=req.verification.proof_of_work,
+        proof_artifacts=req.verification.proof_artifacts
+    )
+    
+    # 2. Log security events for injection attempts
+    if decision.schema_used == "INJECTION_BLOCKED":
+        redis_client.incrbyfloat("metrics:attacks_blocked", 1.0)
+        wal.append("SECURITY_INTERVENTION", {
+            "reason": "PROMPT_INJECTION_BLOCKED",
+            "mandate_id": req.mandate_id,
+            "decision": decision.to_dict()
+        })
+        raise HTTPException(status_code=403, detail="PROMPT_INJECTION_BLOCKED")
+    
+    # 3. Binary settlement: passed → full payout, failed → full refund
+    score = 1.0 if decision.passed else 0.0
     total_amount = req.amount_in_escrow
     
-    # 1% platform fee
+    # 1% platform fee (always collected — Razorpay's revenue)
     platform_fee = total_amount * 0.01
     remaining_pool = total_amount - platform_fee
     
@@ -222,7 +283,9 @@ def settle_escrow(req: EscrowSettleRequest):
     
     wal.append("ESCROW_SETTLEMENT", {
         "mandate_id": req.mandate_id,
-        "completion_score": score,
+        "verification_decision": decision.to_dict(),
+        "schema_used": decision.schema_used,
+        "verified": decision.passed,
         "platform_fee": platform_fee,
         "vendor_payout": vendor_payout,
         "refund_amount": refund_amount
@@ -230,6 +293,7 @@ def settle_escrow(req: EscrowSettleRequest):
     
     return {
         "status": "settled",
+        "verification": decision.to_dict(),
         "settlement_breakdown": {
             "platform_fee": round(platform_fee, 2),
             "vendor_payout": round(vendor_payout, 2),

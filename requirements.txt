@@ -6,4 +6,4 @@ requests
 razorpay
 python-dotenv
 httpx
-httpx2
+google-generativeai==0.8.6

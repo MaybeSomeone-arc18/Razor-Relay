@@ -224,12 +224,20 @@
                 </div>
                 
                 <!-- Escrow -->
-                <div class="glass-card rounded-2xl p-6 hover:border-emerald-500/30 hover:-translate-y-1 transition-all duration-300">
-                    <h3 class="font-syne text-md font-bold uppercase tracking-wider mb-4">Execute Escrow</h3>
-                    <label class="text-xs uppercase tracking-widest text-white/60 font-semibold mb-2 block">Completion Score</label>
-                    <input type="number" id="escrow-score" value="0.95" step="0.01" class="input-dark w-full px-4 py-2.5 rounded-lg text-sm mb-4">
-                    <button onclick="settleEscrow()" class="w-full py-2.5 bg-emerald-500/5 hover:bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-syne tracking-[0.15em] uppercase transition-all duration-300">
-                        Settle Funds
+                <div class="glass-card rounded-2xl p-6 hover:border-emerald-500/30 hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                    <h3 class="font-syne text-md font-bold uppercase tracking-wider mb-4">AI Verification (Schema Routed)</h3>
+                    
+                    <label class="text-xs uppercase tracking-widest text-white/60 font-semibold mb-2 block">Task Scope (Context for AI)</label>
+                    <input type="text" id="escrow-scope" value="Deliver processed data file" class="input-dark w-full px-4 py-2 rounded-lg text-sm mb-3">
+                    
+                    <label class="text-xs uppercase tracking-widest text-white/60 font-semibold mb-2 block">Proof Description</label>
+                    <textarea id="escrow-proof" rows="2" class="input-dark w-full px-4 py-2 rounded-lg text-sm mb-3" placeholder="e.g. Delivered file with hash XYZ"></textarea>
+                    
+                    <label class="text-xs uppercase tracking-widest text-white/60 font-semibold mb-2 block">Proof Artifacts (JSON payload)</label>
+                    <textarea id="escrow-artifacts" rows="2" class="input-dark w-full px-4 py-2 rounded-lg text-sm mb-4 font-mono text-[11px]" placeholder='{"artifact_hash": "a1b2", "expected_hash": "a1b2"}'></textarea>
+                    
+                    <button onclick="settleEscrow()" class="w-full py-2.5 bg-emerald-500/5 hover:bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-syne tracking-[0.15em] uppercase transition-all duration-300 mt-auto">
+                        Route & Verify
                     </button>
                 </div>
             </div>
@@ -238,6 +246,24 @@
 
         <!-- Right Column: Terminal -->
         <div class="w-[55%] p-8 pl-0 z-10 flex flex-col">
+            <!-- Metrics Panel -->
+            <div class="glass-card rounded-2xl p-4 mb-6 flex justify-between items-center bg-white/5 border border-white/10">
+                <div class="text-center">
+                    <div class="text-[10px] uppercase tracking-widest text-white/50 mb-1">GMV Processed</div>
+                    <div class="text-lg font-mono font-bold text-emerald-400">₹<span id="metric-gmv">0</span></div>
+                </div>
+                <div class="w-px h-8 bg-white/10"></div>
+                <div class="text-center">
+                    <div class="text-[10px] uppercase tracking-widest text-white/50 mb-1">Attacks Blocked</div>
+                    <div class="text-lg font-mono font-bold text-rose-400" id="metric-attacks">0</div>
+                </div>
+                <div class="w-px h-8 bg-white/10"></div>
+                <div class="text-center">
+                    <div class="text-[10px] uppercase tracking-widest text-white/50 mb-1">Platform Rev (1%)</div>
+                    <div class="text-lg font-mono font-bold text-amber-400">₹<span id="metric-rev">0</span></div>
+                </div>
+            </div>
+
             <div class="glass-card rounded-2xl flex-1 flex flex-col overflow-hidden bg-[#020202]/80 border-white/5 shadow-2xl">
                 <!-- Window Bar -->
                 <div class="px-4 py-3 border-b border-white/5 flex justify-between items-center bg-white/5">
@@ -342,7 +368,7 @@
         const amount = parseFloat(document.getElementById('sim-amount').value);
         const nonce = crypto.randomUUID();
         
-        const payload = {
+        let payload = {
             mandate_id: mandateId,
             delegation: {
                 human_root_hash: "ui_hash",
@@ -359,9 +385,22 @@
             expiry: Math.floor(Date.now() / 1000) + 3600,
             nonce: nonce,
             requested_amount: amount,
-            quoted_price: amount,
-            signature: "ui_signature" 
+            quoted_price: amount
         };
+
+        try {
+            // Fetch real signature from backend
+            const signRes = await fetch('/v1/relay/mandate/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const signData = await signRes.json();
+            payload.signature = signData.signature;
+        } catch(e) {
+            addLog('SIGN_ERROR', 'error', { error: 'Failed to generate HMAC signature' });
+            return;
+        }
 
         try {
             const res = await fetch('/v1/relay/gateway/execute', {
@@ -397,13 +436,23 @@
 
     async function settleEscrow() {
         const mandateId = document.getElementById('revoke-mandate-id').value;
-        const score = parseFloat(document.getElementById('escrow-score').value);
+        const proof = document.getElementById('escrow-proof').value || "Delivered file with hash a1b2";
+        const scope = document.getElementById('escrow-scope').value || "Deliver processed data file";
+        let artifacts = {};
+        try {
+            const artVal = document.getElementById('escrow-artifacts').value;
+            if (artVal) artifacts = JSON.parse(artVal);
+        } catch(e) {
+            addLog('JSON_ERROR', 'error', { error: 'Invalid JSON in artifacts field' });
+            return;
+        }
         
         const payload = {
             mandate_id: mandateId,
-            verification: { completion_score: score },
+            verification: { proof_of_work: proof, scope: scope, proof_artifacts: artifacts },
             amount_in_escrow: parseFloat(document.getElementById('sim-amount').value) || 500.0
         };
+        addLog('AI_ROUTING', 'info', { message: 'Gemini is classifying task scope to select verification schema...' });
 
         try {
             const res = await fetch('/v1/relay/escrow/settle', {
@@ -413,9 +462,11 @@
             });
             const data = await res.json();
             if (res.ok) {
-                addLog('ESCROW_SETTLEMENT', 'success', data);
+                const schema = data.verification ? data.verification.schema_used : "UNKNOWN";
+                addLog(`VERIFICATION_PASSED [${schema}]`, 'success', data);
             } else {
-                addLog('ESCROW_REJECTED', 'error', data);
+                const schema = data.verification ? data.verification.schema_used : (data.detail || "REJECTED");
+                addLog(`VERIFICATION_FAILED [${schema}]`, 'error', data);
             }
         } catch (e) {
             addLog('ESCROW_ERROR', 'error', { error: e.message });
@@ -425,6 +476,22 @@
     function clearLogs() {
         document.getElementById('log-container').innerHTML = '';
     }
+
+    async function fetchMetrics() {
+        try {
+            const res = await fetch('/v1/relay/metrics');
+            const data = await res.json();
+            document.getElementById('metric-gmv').innerText = data.total_gmv_processed.toLocaleString();
+            document.getElementById('metric-attacks').innerText = data.fraud_attacks_blocked;
+            document.getElementById('metric-rev').innerText = data.estimated_platform_revenue.toLocaleString();
+        } catch (e) {
+            console.error("Failed to fetch metrics", e);
+        }
+    }
+    
+    // Fetch metrics every 2 seconds
+    setInterval(fetchMetrics, 2000);
+    fetchMetrics();
 </script>
 </body>
 </html>
