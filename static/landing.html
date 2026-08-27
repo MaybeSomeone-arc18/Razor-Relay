@@ -353,31 +353,39 @@ res = requests.post(
       </div>
 
       <!-- Carousel Container -->
-      <div class="relative overflow-hidden w-full">
-        <div id="carousel-track" class="flex transition-transform duration-700 ease-in-out gap-6" style="transform: translateX(0%);">
+      <div class="relative w-full group">
+        <!-- Manual Arrows -->
+        <button onclick="document.getElementById('carousel-track').scrollBy({left: -300, behavior: 'smooth'})" class="absolute left-0 top-1/2 -translate-y-1/2 -ml-4 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+          <i data-lucide="chevron-left" class="w-5 h-5 text-slate-600 dark:text-slate-300"></i>
+        </button>
+        <button onclick="document.getElementById('carousel-track').scrollBy({left: 300, behavior: 'smooth'})" class="absolute right-0 top-1/2 -translate-y-1/2 -mr-4 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+          <i data-lucide="chevron-right" class="w-5 h-5 text-slate-600 dark:text-slate-300"></i>
+        </button>
+
+        <div id="carousel-track" class="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-4 no-scrollbar scroll-smooth">
           <!-- Card 1 -->
-          <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
+          <div class="snap-start min-w-[85%] sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
             <div class="text-blade-blue-text mb-4"><i data-lucide="plane-takeoff" class="w-8 h-8"></i></div>
             <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"AI Travel Procurement Bot: 0% Budget Overrun across 500 tx."</p>
             <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">TravelAgent-X</div>
           </div>
           <!-- Card 2 -->
-          <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
+          <div class="snap-start min-w-[85%] sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
             <div class="text-blade-teal-neon mb-4"><i data-lucide="shopping-bag" class="w-8 h-8"></i></div>
             <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"D2C Scraping Agent: ₹1.2M Secured with 0 False Positive Releases."</p>
             <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">ScrapeCommerce</div>
           </div>
           <!-- Card 3 -->
-          <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
+          <div class="snap-start min-w-[85%] sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
             <div class="text-purple-500 mb-4"><i data-lucide="building-2" class="w-8 h-8"></i></div>
             <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"B2B Enterprise Bot: Sub-15ms Latency under 500 concurrent requests."</p>
             <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">EnterpriseSync</div>
           </div>
-          <!-- Clone for looping logic (simplified JS will handle sliding) -->
-          <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
-            <div class="text-blade-blue-text mb-4"><i data-lucide="plane-takeoff" class="w-8 h-8"></i></div>
-            <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"AI Travel Procurement Bot: 0% Budget Overrun across 500 tx."</p>
-            <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">TravelAgent-X</div>
+          <!-- Card 4 -->
+          <div class="snap-start min-w-[85%] sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
+            <div class="text-orange-500 mb-4"><i data-lucide="shield-check" class="w-8 h-8"></i></div>
+            <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"Defi Trader: 10,000+ swaps secured by cryptographic mandates."</p>
+            <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">DeFi-Alpha</div>
           </div>
         </div>
       </div>
@@ -543,6 +551,8 @@ res = requests.post(
       // Reset all buttons
       document.querySelectorAll('.arch-tab').forEach(btn => {
         btn.className = "arch-tab text-left px-6 py-4 rounded-xl border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-700 transition-all font-bold text-slate-500 dark:text-slate-400 hover:text-[#02042B] dark:hover:text-white flex items-center gap-3";
+        const icon = btn.querySelector('svg');
+        if (icon) icon.classList.remove('text-blade-blue-text');
       });
       // Reset all panels
       document.querySelectorAll('.arch-panel').forEach(panel => {
@@ -554,34 +564,15 @@ res = requests.post(
       const activeBtn = document.getElementById(`arch-tab-${index}`);
       activeBtn.className = "arch-tab text-left px-6 py-4 rounded-xl border-2 border-blade-blue-primary bg-slate-50 dark:bg-blade-navy-card/50 transition-all font-bold text-[#02042B] dark:text-white flex items-center gap-3";
       
-      const activeIcon = activeBtn.querySelector('i');
-      activeIcon.classList.add('text-blade-blue-text'); // highlight icon
+      const activeIcon = activeBtn.querySelector('svg');
+      if (activeIcon) activeIcon.classList.add('text-blade-blue-text'); // highlight icon
 
       const activePanel = document.getElementById(`arch-panel-${index}`);
       activePanel.classList.remove('opacity-0', '-z-10');
       activePanel.classList.add('opacity-100', 'z-10');
     }
 
-    // 5. Agent Benchmark Carousel
-    const track = document.getElementById('carousel-track');
-    let position = 0;
-    
-    // Simplistic auto-slide. (Assumes lg screens where 33.33% is width)
-    setInterval(() => {
-      position++;
-      if (position > 2) {
-        position = 0;
-        track.style.transition = 'none'; // Snap back
-        track.style.transform = `translateX(0%)`;
-        setTimeout(() => {
-          track.style.transition = 'transform 700ms ease-in-out';
-          position = 1;
-          track.style.transform = `translateX(-${position * 33.333}%)`;
-        }, 50);
-      } else {
-        track.style.transform = `translateX(-${position * 33.333}%)`;
-      }
-    }, 4000);
+    // 5. Agent Benchmark Carousel (Removed JS Auto-slide, handled natively via CSS snap)
 
     // 6. FAQ Accordion
     function toggleFaq(btn) {
