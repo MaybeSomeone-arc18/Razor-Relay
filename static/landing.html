@@ -1,190 +1,271 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Razor-Relay | Zero-Trust Escrow Gateway</title>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        serif: ['"Instrument Serif"', 'serif'],
-                        sans: ['"Space Grotesk"', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'monospace'],
-                    },
-                    colors: {
-                        sky: '#2C3740',
-                        sand: '#F5F0E6',
-                        ink: '#1C242B',
-                        neon: '#00FF88',
-                    }
-                }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Razor-Relay | Sovereign Gateway</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Mulish:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Mulish', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            // Razorpay Blade Design Tokens
+            blade: {
+              navy: {
+                dark: '#02042B',
+                card: '#0B192C',
+                light: '#070F1E'
+              },
+              blue: {
+                primary: '#0B5CFF',
+                hover: '#0047E1'
+              },
+              teal: {
+                neon: '#00D290'
+              }
             }
+          }
         }
-    </script>
-    <style>
-        .full-page-bg {
-            background-color: #2C3740;
-            background-image: url('/static/background.svg');
-            background-size: 100% auto;
-            background-position: top center;
-            background-repeat: no-repeat;
-            background-attachment: scroll;
-            min-height: 100vh;
-        }
-        .neon-glow {
-            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
-        }
-        .glass-panel {
-            background: rgba(44, 55, 64, 0.8);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(245, 240, 230, 0.2);
-        }
-        .step-card {
-            background: rgba(245, 240, 230, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(28, 36, 43, 0.1);
-        }
-    </style>
+      }
+    }
+  </script>
+
+  <style>
+    /* Smooth transitions for theme toggle */
+    * {
+      transition-property: background-color, border-color, color, fill, stroke;
+      transition-duration: 300ms;
+    }
+  </style>
 </head>
-<body class="bg-sand text-ink antialiased">
-    <!-- Wrapper for fixed background effect -->
-    <div class="full-page-bg w-full">
-        <!-- Navigation -->
-        <nav class="w-full z-50 px-6 py-8 flex justify-between items-center text-sand">
-            <div class="flex items-center gap-4">
-                <span class="font-serif text-2xl tracking-wide">RAZOR-RELAY</span>
-            </div>
-            <div class="flex gap-6 text-sm font-sans tracking-wide items-center">
-                <a href="/docs" class="hover:text-neon transition-colors">Swagger API</a>
-                <a href="/ui" class="hover:text-neon transition-colors border border-sand/50 px-4 py-1.5 rounded-full">Live Dashboard</a>
-            </div>
-        </nav>
+<body class="bg-[#F8FAFC] dark:bg-blade-navy-dark text-slate-600 dark:text-slate-300 antialiased min-h-screen flex flex-col selection:bg-blade-blue-primary/30">
 
-        <!-- Top Sky Zone (Hero) -->
-        <header class="text-sand px-6 pt-12 relative overflow-hidden">
-            <div class="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-start relative">
-                
-                <!-- Left Column -->
-                <div class="lg:col-span-7 space-y-8 z-10 pt-10">
-                    <div class="inline-block border border-neon/50 text-neon px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-widest neon-glow bg-sky/50 backdrop-blur-md">
-                        TRACK 01 // AGENTIC COMMERCE
-                    </div>
-                    <h1 class="font-serif text-6xl lg:text-8xl leading-[0.9] tracking-tight text-white drop-shadow-lg">The Sovereign Gateway for Agentic Commerce.</h1>
-                    <p class="font-sans text-lg lg:text-xl text-sand/90 max-w-lg font-light drop-shadow-md">Cryptographically bounded mandates, sub-second switch failover, and zero-trust micro-escrow—built natively on Razorpay payment infrastructure.</p>
-                    <div class="flex gap-4 pt-4">
-                        <a href="/ui" class="bg-neon text-sky px-8 py-3 rounded-full font-mono text-sm tracking-widest uppercase hover:bg-white hover:text-sky transition-colors font-bold shadow-[0_0_20px_rgba(0,255,136,0.4)]">Launch Demo Dashboard</a>
-                        <a href="#architecture" class="border border-sand/50 bg-sky/40 backdrop-blur-md px-8 py-3 rounded-full font-mono text-sm tracking-widest uppercase hover:border-neon hover:text-neon transition-colors">Explore Architecture</a>
-                    </div>
-                </div>
-
-                <!-- Right Column HUD -->
-                <div class="lg:col-span-5 relative z-10 hidden lg:block pt-4">
-                    <div class="glass-panel rounded-2xl p-3 shadow-2xl transform hover:scale-105 transition-transform duration-500 float-right max-w-[400px]">
-                        <img src="/static/dashboard-preview.png" alt="Razor-Relay Dashboard" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMUMyNDJCIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiNGNUYwRTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkhVRCBQUkVWSUVXPC90ZXh0Pjwvc3ZnPg=='" class="w-full rounded-xl opacity-90 hover:opacity-100 transition-opacity">
-                    </div>
-                </div>
-
-            </div>
-            <!-- Large empty space to allow Archway to be visible if it is centered in the SVG -->
-            <div class="h-[40vh] w-full"></div>
-        </header>
-        
-        <!-- Serpentine River Architecture Zone -->
-        <section id="architecture" class="py-24 px-6 relative z-10">
-            <div class="max-w-6xl mx-auto flex flex-col space-y-40">
-                
-                <!-- Step 01: Right Side -->
-                <div class="ml-auto max-w-lg step-card p-10 rounded-3xl shadow-xl">
-                    <div class="text-sky font-serif text-6xl opacity-80 -mt-16 bg-sand w-20 h-20 flex items-center justify-center rounded-full border border-ink/10 shadow-sm mb-6">01</div>
-                    <h3 class="font-sans font-bold text-2xl text-ink mb-4">Mandate Handshake</h3>
-                    <p class="font-sans text-ink/80 leading-relaxed mb-6">HMAC-SHA256 5-tuple signatures & Merkle proofs (<span class="font-mono bg-sky/10 text-sky px-1.5 py-0.5 rounded text-sm">Depth &le; 2</span>). Unforgeable constraints bind agents to precise limits.</p>
-                    <div class="bg-ink text-neon p-4 rounded-xl font-mono text-xs overflow-x-auto">
-                        <pre><code>{
-  "mandate_id": "mnd_8f92a",
-  "max_spend": 500,
-  "signature": "hmac_sha256(payload, secret)"
-}</code></pre>
-                    </div>
-                </div>
-
-                <!-- Step 02: Left Side -->
-                <div class="mr-auto max-w-lg step-card p-10 rounded-3xl shadow-xl">
-                    <div class="text-sky font-serif text-6xl opacity-80 -mt-16 bg-sand w-20 h-20 flex items-center justify-center rounded-full border border-ink/10 shadow-sm mb-6">02</div>
-                    <h3 class="font-sans font-bold text-2xl text-ink mb-4">Telemetry Failover</h3>
-                    <p class="font-sans text-ink/80 leading-relaxed mb-6">Real-time switch health scoring (<span class="font-mono bg-sky/10 text-sky px-1.5 py-0.5 rounded text-sm">H_bank</span>) triggering sub-second failover to Razorpay Smart Collect Escrow VPAs.</p>
-                    <div class="bg-ink text-sand p-4 rounded-xl font-mono text-xs overflow-x-auto">
-                        <pre><code>if (H_bank < 0.95):
-    route_to_smart_collect(vpa)
-else:
-    process_standard()</code></pre>
-                    </div>
-                </div>
-
-                <!-- Step 03: Right Side -->
-                <div class="ml-auto max-w-lg step-card p-10 rounded-3xl shadow-xl">
-                    <div class="text-sky font-serif text-6xl opacity-80 -mt-16 bg-sand w-20 h-20 flex items-center justify-center rounded-full border border-ink/10 shadow-sm mb-6">03</div>
-                    <h3 class="font-sans font-bold text-2xl text-ink mb-4">Escrow Settlement</h3>
-                    <p class="font-sans text-ink/80 leading-relaxed mb-6">Local LLM schema routing + deterministic Python payouts (1% platform split) or automated refunds.</p>
-                    <div class="bg-ink text-sand/80 p-4 rounded-xl font-mono text-xs overflow-x-auto">
-                        <pre><code>def settle_escrow():
-    schema = llm_classify(proof)
-    if verify_deterministic(schema):
-        release_funds()
-    else:
-        refund_escrow()</code></pre>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-
-        <!-- Bottom Metric Grid -->
-        <section class="pb-24 px-6 relative z-10">
-            <div class="max-w-6xl mx-auto step-card rounded-[2rem] p-10 backdrop-blur-lg shadow-2xl">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <div class="border-l-[3px] border-sky pl-5">
-                        <div class="font-mono text-[10px] text-ink/60 uppercase tracking-[0.2em] mb-2 font-bold">Latency</div>
-                        <div class="font-serif text-4xl font-bold text-ink mb-1">&lt; 15ms</div>
-                        <div class="text-xs text-ink/70 font-sans font-medium">Sub-second execution</div>
-                    </div>
-                    <div class="border-l-[3px] border-sky pl-5">
-                        <div class="font-mono text-[10px] text-ink/60 uppercase tracking-[0.2em] mb-2 font-bold">Security Accuracy</div>
-                        <div class="font-serif text-4xl font-bold text-ink mb-1">98.0%</div>
-                        <div class="text-xs text-ink/70 font-sans font-medium">0 False Positive Releases</div>
-                    </div>
-                    <div class="border-l-[3px] border-sky pl-5">
-                        <div class="font-mono text-[10px] text-ink/60 uppercase tracking-[0.2em] mb-2 font-bold">Failover Speed</div>
-                        <div class="font-serif text-4xl font-bold text-ink mb-1">&lt; 10ms</div>
-                        <div class="text-xs text-ink/70 font-sans font-medium">Smart Collect VPA trip</div>
-                    </div>
-                    <div class="border-l-[3px] border-sky pl-5">
-                        <div class="font-mono text-[10px] text-ink/60 uppercase tracking-[0.2em] mb-2 font-bold">Unbound Overhead</div>
-                        <div class="font-serif text-4xl font-bold text-ink mb-1">0%</div>
-                        <div class="text-xs text-ink/70 font-sans font-medium">Zero financial actions by un-gated prompts</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Footer -->
-        <footer class="bg-ink text-sand py-10 px-6 border-t border-sand/10 relative z-10">
-            <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-                <div class="text-xs font-mono tracking-widest text-sand/50">
-                    Razor-Relay // Built for the Razorpay AI Buildathon 2026
-                </div>
-                <a href="/ui" class="border border-sand/20 text-sand px-6 py-2.5 rounded-full font-mono text-xs tracking-widest uppercase hover:bg-sand hover:text-ink transition-colors flex items-center gap-2">
-                    Enter Dashboard &rarr;
-                </a>
-            </div>
-        </footer>
-
+  <!-- Header -->
+  <nav class="w-full bg-white/80 dark:bg-[#070F1E]/80 backdrop-blur-md border-b border-slate-200 dark:border-blue-500/20 py-4 px-6 flex items-center justify-between sticky top-0 z-50">
+    <div class="flex items-center gap-4">
+      <span class="font-black text-xl tracking-tight text-[#02042B] dark:text-white">RAZOR-RELAY</span>
+      <span class="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-blade-teal-neon/10 text-blade-teal-neon border border-blade-teal-neon/20 text-[10px] font-bold tracking-widest uppercase">
+        Track 01 // Agentic Commerce
+      </span>
     </div>
+    <div class="flex items-center gap-6 text-sm font-bold">
+      <!-- Theme Switcher -->
+      <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors focus:outline-none">
+        <!-- Sun Icon (shows in dark mode) -->
+        <svg id="sunIcon" class="hidden w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        <!-- Moon Icon (shows in light mode) -->
+        <svg id="moonIcon" class="hidden w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+      </button>
+
+      <span class="flex items-center gap-2 text-[#02042B] dark:text-slate-300">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blade-teal-neon opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-blade-teal-neon"></span>
+        </span>
+        SYSTEM ONLINE
+      </span>
+      <a href="/docs" class="hidden md:inline-block text-slate-500 hover:text-[#02042B] dark:text-slate-400 dark:hover:text-white transition-colors">API Docs</a>
+      <a href="/ui" class="hidden sm:inline-flex items-center gap-2 text-blade-blue-primary hover:text-blade-blue-hover transition-colors">
+        Launch Dashboard &rarr;
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="relative pt-24 pb-20 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center flex-1">
+    <!-- Left Column -->
+    <div class="lg:col-span-7 space-y-8 relative z-10">
+      <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight text-[#02042B] dark:text-white leading-[1.1]">
+        The Sovereign Gateway for Agentic Commerce.
+      </h1>
+
+      <p class="text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+        Cryptographically bounded mandates, sub-second switch failover, and zero-trust micro-escrow—built natively on Razorpay payment infrastructure.
+      </p>
+
+      <div class="flex flex-wrap gap-4 pt-4">
+        <a href="/ui" class="bg-blade-blue-primary hover:bg-blade-blue-hover text-white px-8 py-4 rounded-lg font-bold text-sm shadow-[0_4px_14px_0_rgba(11,92,255,0.39)] transition-all flex items-center gap-2">
+          Launch Interactive Dashboard &rarr;
+        </a>
+        <a href="#architecture" class="bg-transparent border border-slate-300 dark:border-blue-500/30 text-[#02042B] dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-blue-500/10 px-8 py-4 rounded-lg font-bold text-sm transition-all">
+          Explore Architecture
+        </a>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive API Terminal -->
+    <div class="lg:col-span-5 relative z-10">
+      <div class="bg-white dark:bg-blade-navy-card/80 backdrop-blur-xl border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-[0_20px_50px_rgba(2,4,43,0.5)] overflow-hidden">
+        <div class="border-b border-slate-200 dark:border-slate-700/60 px-4 py-3 flex items-center justify-between bg-slate-50 dark:bg-[#070F1E]/50">
+          <div class="flex gap-1.5">
+            <div class="w-3 h-3 rounded-full bg-red-400"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+            <div class="w-3 h-3 rounded-full bg-green-400"></div>
+          </div>
+          <div class="flex gap-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer">
+            <span class="text-blade-blue-primary border-b-2 border-blade-blue-primary pb-1">cURL</span>
+            <span class="hover:text-[#02042B] dark:hover:text-white transition-colors">Python</span>
+            <span class="hover:text-[#02042B] dark:hover:text-white transition-colors">Node.js</span>
+          </div>
+        </div>
+        
+        <div class="p-6 font-mono text-sm overflow-x-auto leading-relaxed">
+          <pre class="text-slate-700 dark:text-slate-300">
+<span class="text-pink-600 dark:text-pink-400 font-bold">curl</span> -X POST https://api.razor-relay.com/v1/relay/route \
+  -H <span class="text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 px-1 rounded">"Authorization: Bearer agent_key..."</span> \
+  -H <span class="text-yellow-600 dark:text-yellow-400">"Content-Type: application/json"</span> \
+  -d <span class="text-green-600 dark:text-blade-teal-neon">'{
+  "mandate_id": "mnd_123",
+  "requested_amount": 500,
+  "schema": "service_rendered",
+  "signature": "hmac_sha256_hash"
+}'</span></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Razorpay Data Flow Architecture Section -->
+  <section id="architecture" class="py-20 px-6 bg-slate-50 dark:bg-[#070F1E] border-y border-slate-200 dark:border-blue-500/10">
+    <div class="max-w-6xl mx-auto space-y-12">
+      <div class="text-center max-w-2xl mx-auto">
+        <h2 class="text-3xl font-black text-[#02042B] dark:text-white mb-4">Razorpay Data Flow Architecture</h2>
+        <p class="text-slate-600 dark:text-slate-400">Secure end-to-end processing mimicking Razorpay's enterprise standard.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
+        <!-- Card 01 -->
+        <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-6 shadow-xl shadow-blue-500/5 dark:shadow-lg dark:hover:border-blue-500/30 transition-all">
+          <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center mb-6">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-[#02042B] dark:text-white mb-3">Agent Client</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+            Cryptographic Merkle Proofs & HMAC-SHA256 Mandates. Submits cryptographically signed payloads ensuring integrity.
+          </p>
+        </div>
+
+        <!-- Card 02 -->
+        <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-6 shadow-xl shadow-blue-500/5 dark:shadow-lg dark:hover:border-green-500/30 transition-all">
+          <div class="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20 flex items-center justify-center mb-6">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-[#02042B] dark:text-white mb-3">Relay Gateway</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+            Sub-second switch health scoring and circuit breaker failover to Smart Collect Escrow VPAs.
+          </p>
+        </div>
+
+        <!-- Card 03 -->
+        <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-6 shadow-xl shadow-blue-500/5 dark:shadow-lg dark:hover:border-purple-500/30 transition-all">
+          <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-500/20 flex items-center justify-center mb-6">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-[#02042B] dark:text-white mb-3">Escrow State</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+            Local LLM task classification & 1% platform fee payouts executed securely via RazorpayX.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Verified Metrics Grid -->
+  <section class="py-20 px-6 bg-white dark:bg-[#070F1E] border-t border-slate-200 dark:border-blue-500/10">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-black text-[#02042B] dark:text-white mb-4">Production Standards & Verified Metrics</h2>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="p-6 bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-none dark:hover:border-blue-500/30 transition-all text-center lg:text-left">
+          <h4 class="text-xs font-bold text-slate-500 tracking-wider mb-2 uppercase">Latency</h4>
+          <div class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white font-mono mb-2">&lt; 15ms</div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">Sub-second execution</p>
+        </div>
+
+        <div class="p-6 bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-none dark:hover:border-blue-500/30 transition-all text-center lg:text-left">
+          <h4 class="text-xs font-bold text-slate-500 tracking-wider mb-2 uppercase">Security Accuracy</h4>
+          <div class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white font-mono mb-2">98.0%</div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">0 False Positive releases across 100 scenarios</p>
+        </div>
+
+        <div class="p-6 bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-none dark:hover:border-blue-500/30 transition-all text-center lg:text-left">
+          <h4 class="text-xs font-bold text-slate-500 tracking-wider mb-2 uppercase">Failover Speed</h4>
+          <div class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white font-mono mb-2">&lt; 10ms</div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">Smart Collect VPA circuit breaker trip</p>
+        </div>
+
+        <div class="p-6 bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-none dark:hover:border-blue-500/30 transition-all text-center lg:text-left">
+          <h4 class="text-xs font-bold text-slate-500 tracking-wider mb-2 uppercase">Unbound Overhead</h4>
+          <div class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white font-mono mb-2">0%</div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">Zero financial actions by un-gated prompts</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-10 border-t border-slate-200 dark:border-blue-500/20 bg-[#F8FAFC] dark:bg-[#02042B] text-center space-y-6">
+    <p class="text-slate-500 font-bold text-sm tracking-wider uppercase">
+      Razor-Relay // Built for the Razorpay AI Buildathon 2026
+    </p>
+    <a href="/ui" class="inline-flex items-center gap-2 bg-[#02042B] dark:bg-slate-800 hover:bg-[#0B192C] dark:hover:bg-slate-700 text-white px-8 py-3.5 rounded-lg font-bold text-sm transition-all border border-slate-700">
+      Enter Interactive Dashboard &rarr;
+    </a>
+  </footer>
+
+  <!-- Theme Toggle Script -->
+  <script>
+    const htmlElement = document.documentElement;
+    const themeToggleBtn = document.getElementById('themeToggle');
+    const sunIcon = document.getElementById('sunIcon');
+    const moonIcon = document.getElementById('moonIcon');
+
+    function updateIcons(theme) {
+      if (theme === 'dark') {
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      } else {
+        moonIcon.classList.remove('hidden');
+        sunIcon.classList.add('hidden');
+      }
+    }
+
+    function setTheme(theme) {
+      if (theme === 'dark') {
+        htmlElement.classList.add('dark');
+        localStorage.setItem('razorpay_theme', 'dark');
+      } else {
+        htmlElement.classList.remove('dark');
+        localStorage.setItem('razorpay_theme', 'light');
+      }
+      updateIcons(theme);
+    }
+
+    // Initialize Theme
+    const storedTheme = localStorage.getItem('razorpay_theme') || 'dark'; // Default to dark mode
+    setTheme(storedTheme);
+
+    // Toggle event listener
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme = htmlElement.classList.contains('dark') ? 'dark' : 'light';
+      setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    });
+  </script>
 </body>
 </html>

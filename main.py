@@ -27,13 +27,15 @@ logger = logging.getLogger("razor-relay")
 app = FastAPI(title="Razor-Relay Zero-Trust Gateway")
 
 os.makedirs("static", exist_ok=True)
-os.makedirs("static/_next", exist_ok=True)
-app.mount("/ui", StaticFiles(directory="static", html=True), name="ui_static")
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/_next", StaticFiles(directory="static/_next"), name="next_static")
 
 @app.get("/", response_class=FileResponse)
-async def read_landing():
+async def serve_landing():
+    return FileResponse("static/landing.html")
+
+@app.get("/ui", response_class=FileResponse)
+async def serve_dashboard():
     return FileResponse("static/index.html")
 
 # --- Redis Protection Layer (Upstash REST & In-Memory Fallback) ---
