@@ -32,7 +32,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/", response_class=FileResponse)
 async def read_landing():
-    return FileResponse("static/landing.html")
+    return FileResponse("static/index.html")
 
 # --- Redis Protection Layer (Upstash REST & In-Memory Fallback) ---
 from database.redis_client import RedisStateStore
