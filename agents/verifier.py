@@ -12,6 +12,7 @@ import re
 import json
 import time
 import logging
+import requests
 from typing import Optional
 from dataclasses import dataclass
 
@@ -185,42 +186,70 @@ VERIFIER_REGISTRY = {
 }
 
 
-# --- AI Classification Layer (Gemini routes to schema) ---
+# --- AI Classification Layer (Provider-Agnostic) ---
 
-_gemini_model = None
-
-def _get_gemini_model():
-    """Lazy-load Gemini model. Returns None if API key not configured."""
-    global _gemini_model
-    if _gemini_model is not None:
-        return _gemini_model
-
+def _get_gemini_response(prompt: str) -> Optional[str]:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        logger.warning("GEMINI_API_KEY not set. AI classification unavailable.")
+        logger.warning("GEMINI_API_KEY not set.")
         return None
-
     try:
         from google import genai
-        _gemini_model = genai.Client(api_key=api_key)
-        return _gemini_model
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model='gemini-3.6-flash',
+            contents=prompt
+        )
+        return response.text
     except Exception as e:
-        logger.error(f"Failed to initialize Gemini: {e}")
+        logger.error(f"Gemini classification failed: {e}")
         return None
 
+def _get_ollama_response(prompt: str) -> Optional[str]:
+    base_url = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
+    model = os.getenv("LLM_MODEL", "llama3.2:3b")
+    try:
+        res = requests.post(f"{base_url}/api/generate", json={
+            "model": model,
+            "prompt": prompt,
+            "stream": False
+        }, timeout=10)
+        res.raise_for_status()
+        return res.json().get("response")
+    except Exception as e:
+        logger.error(f"Ollama classification failed: {e}")
+        return None
+
+def _get_groq_response(prompt: str) -> Optional[str]:
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        logger.warning("GROQ_API_KEY not set.")
+        return None
+    model = os.getenv("LLM_MODEL", "llama3-8b-8192")
+    try:
+        res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }, json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}]
+        }, timeout=10)
+        res.raise_for_status()
+        return res.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        logger.error(f"Groq classification failed: {e}")
+        return None
 
 def classify_verification_schema(scope: str, proof_of_work: str) -> str:
-    """Uses Gemini Flash to classify which verification schema applies.
+    """Uses an LLM to classify which verification schema applies.
 
     Returns one of: payment_confirmed, data_delivery, service_rendered.
-    Falls back to keyword heuristic if Gemini is unavailable.
+    Falls back to keyword heuristic if the LLM is unavailable.
     """
-    model = _get_gemini_model()
-
-    if model:
-        try:
-            schema_list = ", ".join(VERIFICATION_SCHEMAS.keys())
-            prompt = f"""You are a task-type classifier for an escrow verification system.
+    provider = os.getenv("LLM_PROVIDER", "ollama").lower()
+    
+    schema_list = ", ".join(VERIFICATION_SCHEMAS.keys())
+    prompt = f"""You are a task-type classifier for an escrow verification system.
 
 Given a task scope and proof description, classify which verification schema applies.
 
@@ -232,18 +261,22 @@ Proof Description: {proof_of_work}
 
 Respond with ONLY the schema name, nothing else."""
 
-            response = model.models.generate_content(
-                model='gemini-3.6-flash',
-                contents=prompt
-            )
-            schema = response.text.strip().lower().replace('"', '').replace("'", "")
+    ai_text = None
+    if provider == "ollama":
+        ai_text = _get_ollama_response(prompt)
+    elif provider == "gemini":
+        ai_text = _get_gemini_response(prompt)
+    elif provider == "groq":
+        ai_text = _get_groq_response(prompt)
+    else:
+        logger.warning(f"Unknown LLM_PROVIDER '{provider}', skipping AI classification")
 
-            if schema in VERIFICATION_SCHEMAS:
-                return schema
-            else:
-                logger.warning(f"Gemini returned unknown schema '{schema}', falling back to heuristic")
-        except Exception as e:
-            logger.error(f"Gemini classification failed: {e}")
+    if ai_text:
+        schema = ai_text.strip().lower().replace('"', '').replace("'", "")
+        if schema in VERIFICATION_SCHEMAS:
+            return schema
+        else:
+            logger.warning(f"LLM returned unknown schema '{schema}', falling back to heuristic")
 
     # Keyword heuristic fallback (deterministic, never blocks)
     combined = f"{scope} {proof_of_work}".lower()
@@ -268,7 +301,7 @@ def ai_verify_task(scope: str, proof_of_work: str, proof_artifacts: dict = None)
     3. Runs deterministic verifier → binary pass/fail
     4. Returns auditable VerificationDecision (never a raw float)
 
-    FAIL-CLOSED: If Gemini is down, classification falls back to
+    FAIL-CLOSED: If LLM is down, classification falls back to
     keyword heuristic. If the verifier cannot confirm, escrow is BLOCKED.
     """
     proof_artifacts = proof_artifacts or {}
@@ -295,5 +328,5 @@ def ai_verify_task(scope: str, proof_of_work: str, proof_artifacts: dict = None)
         )
 
     decision = verifier_fn(proof_artifacts)
-    decision.raw_ai_output = schema  # Record what Gemini classified
+    decision.raw_ai_output = schema  # Record what LLM classified
     return decision
