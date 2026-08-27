@@ -257,8 +257,16 @@ def classify_verification_schema(scope: str, proof_of_work: str) -> str:
 
 Given a task scope and proof description, classify which verification schema applies.
 
-ALLOWED SCHEMAS (respond with EXACTLY one of these):
-{schema_list}
+ALLOWED SCHEMAS:
+1. data_delivery: Use when the task involves producing, providing, or uploading a file/data artifact.
+2. payment_confirmed: Use when the task involves processing a financial transaction, checkout, or order.
+3. service_rendered: Use when the task involves performing an action, API call, maintenance, or interaction without a file artifact.
+
+EXAMPLES:
+Scope: "E-commerce checkout" | Proof Description: "User completed shopping cart checkout" -> payment_confirmed
+Scope: "Database backup" | Proof Description: "Uploaded compressed SQL dump to cloud storage" -> data_delivery
+Scope: "Server maintenance" | Proof Description: "Rebooted primary instance and installed security patches" -> service_rendered
+Scope: "Social media marketing" | Proof Description: "Published 3 promotional posts on Twitter" -> service_rendered
 
 Task Scope: {scope}
 Proof Description: {proof_of_work}

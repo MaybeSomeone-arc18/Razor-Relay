@@ -35,7 +35,6 @@ graph TD
 1. **AI Routing:** A local LLM (or Gemini/Groq) reads the task payload and classifies it into a predefined verification schema (e.g., `payment_confirmed`, `data_delivery`).
 2. **Deterministic Verification:** The chosen schema maps to a strict Python function. The AI drops out, and the code takes over to verify hashes, Razorpay Order IDs, or webhook timestamps.
 3. **Gated Settlement:** If the deterministic verifier returns `True`, funds are routed to the vendor. If `False` or if prompt injection is detected, funds are returned to the buyer.
-4. **WAL (Write-Ahead Log):** Every state transition is appended to an append-only log backed by Upstash Redis.
 
 ---
 
@@ -83,10 +82,10 @@ This will output a live log showing:
 
 ## 5. Benchmarks & Results
 
-Tested against a rigorous 100-scenario synthetic batch (including obfuscated prompt injections, boundary webhooks, and logic puzzles):
-*   **Accuracy:** **98.0%** (Using local `llama3.2:3b` at temperature=0.0, seed=42).
+Tested against a rigorous 110-scenario synthetic batch (including obfuscated prompt injections, boundary webhooks, and logic puzzles):
+*   **Accuracy:** **92.7%** (Using local `llama3.2:3b` at temperature=0.0, seed=42).
 *   **False Positive Releases (Funds stolen):** **0**
-*   **False Negative Blocks:** **2** (Ambiguous tasks safely blocked. We prefer blocked tasks over stolen money).
+*   **False Negative Blocks:** **8** (Ambiguous tasks safely blocked. We prefer blocked tasks over stolen money).
 
 Run the benchmark yourself:
 ```bash
@@ -105,6 +104,8 @@ pytest benchmark/test_batch_100.py -v
 ---
 
 ## 7. Roadmap (What I'd build next)
-To take this to production, the following two components need to be implemented:
+To take this to production, the following components need to be implemented:
 1. **Async Reconciliation Worker:** A background cron job to sweep and refund `PENDING` escrows that have exceeded their 24h SLA.
-2. **Regex-First LLM Bypass:** Instead of regex as just a defense, using it to completely bypass the LLM for common tasks, introducing a caching layer for high-scale throughput.
+2. **Regex-First Routing Bypass:** Using regex as a caching layer to bypass the LLM for high-scale throughput on common tasks.
+3. **Immutable Log Sink:** Archiving the WAL to an immutable storage layer for compliance.
+4. **Passkeys:** Allowing human root-hash registration via WebAuthn passkeys instead of raw keys.

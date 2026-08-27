@@ -290,6 +290,70 @@ class TestServiceRendered:
         _track("service_rendered", "sr_07_boundary_over", False, passed, "24h 0m 1s -> expired")
         assert passed is False
 
+    def test_sr_new_01_translation(self):
+        ts = str(time.time() - 3600)
+        code, data = _settle("sr_new_01", "translate_document", "Translated 5 pages from English to Spanish", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_01_translation", True, passed, "Generic service translation")
+
+    def test_sr_new_02_data_cleaning(self):
+        ts = str(time.time() - 7200)
+        code, data = _settle("sr_new_02", "clean_dataset", "Removed 150 null rows and formatted dates", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_02_data_cleaning", True, passed, "Generic service data cleaning")
+
+    def test_sr_new_03_code_review(self):
+        ts = str(time.time() - 14400)
+        code, data = _settle("sr_new_03", "review_pull_request", "Left 12 comments on github PR #405", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_03_code_review", True, passed, "Generic service code review")
+
+    def test_sr_new_04_social_outreach(self):
+        ts = str(time.time() - 30)
+        code, data = _settle("sr_new_04", "send_dms", "Sent 100 outreach messages on LinkedIn", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_04_social_outreach", True, passed, "Generic service social outreach")
+
+    def test_sr_new_05_ambiguous_hash(self):
+        ts = str(time.time() - 30)
+        # Confusion: mentions "hash" but the actual artifacts just have timestamp, so it must be service_rendered to pass verification. If it picks data_delivery it fails.
+        code, data = _settle("sr_new_05", "check_malware_hash", "Verified the file hash is clean", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_05_ambiguous_hash", True, passed, "Scope has 'hash' -> tests AI routing precision")
+
+    def test_sr_new_06_ambiguous_order(self):
+        ts = str(time.time() - 30)
+        # Confusion: mentions "order"
+        code, data = _settle("sr_new_06", "sort_customer_orders", "Organized order records alphabetically", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_06_ambiguous_order", True, passed, "Scope has 'order' -> tests AI routing precision")
+
+    def test_sr_new_07_ambiguous_delivery(self):
+        ts = str(time.time() - 30)
+        # Confusion: mentions "delivery"
+        code, data = _settle("sr_new_07", "schedule_delivery", "Booked a pickup slot for tomorrow", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_07_ambiguous_delivery", True, passed, "Scope has 'delivery' -> tests AI routing precision")
+
+    def test_sr_new_08_ambiguous_payment(self):
+        ts = str(time.time() - 30)
+        # Confusion: mentions "paid"
+        code, data = _settle("sr_new_08", "paid_ads_setup", "Configured Google Paid Ads campaign", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_08_ambiguous_payment", True, passed, "Scope has 'paid' -> tests AI routing precision")
+
+    def test_sr_new_09_model_training(self):
+        ts = str(time.time() - 3600)
+        code, data = _settle("sr_new_09", "train_lora", "Ran 10 epochs of training on GPU", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_09_model_training", True, passed, "Generic service model training")
+
+    def test_sr_new_10_design(self):
+        ts = str(time.time() - 3600)
+        code, data = _settle("sr_new_10", "logo_design", "Created 3 vector logo options", {"webhook_timestamp": ts})
+        passed = data.get("verification", {}).get("passed", False)
+        _track("service_rendered", "sr_new_10_design", True, passed, "Generic service design")
+
     @pytest.mark.parametrize("idx", range(8, 26))
     def test_sr_batch(self, idx):
         """Scenarios sr_08 through sr_25: varied timestamps."""

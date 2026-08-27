@@ -244,7 +244,7 @@ def inject_chaos(telemetry: SwitchTelemetry):
 
 @app.post("/v1/relay/mandate/revoke")
 def revoke_mandate(mandate_id: str):
-    """Instant Revocation Endpoint blocking mandate IDs in <10ms."""
+    """Instant Revocation Endpoint blocking mandate IDs."""
     redis_client.set(f"revoked:{mandate_id}", "1")
     wal.append("MANDATE_REVOKED", {"mandate_id": mandate_id})
     return {"status": "revoked", "mandate_id": mandate_id}

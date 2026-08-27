@@ -75,7 +75,7 @@
   <div id="guide-banner" class="w-full bg-slate-900 text-white border-b border-slate-700">
     <div class="max-w-[1600px] mx-auto px-6 py-4">
       <div class="flex justify-between items-center mb-4">
-        <h2 class="font-bold text-sm tracking-wide text-blade-teal-neon uppercase">🚀 INTERACTIVE PLAYGROUND // 30-SECOND QUICK WALKTHROUGH</h2>
+        <h2 class="font-bold text-sm tracking-wide text-blade-teal-neon uppercase">INTERACTIVE PLAYGROUND // 30-SECOND QUICK WALKTHROUGH</h2>
         <button onclick="document.getElementById('guide-content').classList.toggle('hidden')" class="text-xs font-mono font-bold hover:text-slate-300 transition-colors">[ Hide / Show ]</button>
       </div>
       <div id="guide-content" class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
@@ -120,13 +120,13 @@
       <!-- Quick Preset Pills -->
       <div class="flex flex-wrap gap-2 pt-2">
         <button onclick="applyPreset('purchase')" class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-colors">
-          ⚡ Preset: Valid Purchase
+          Preset: Valid Purchase
         </button>
         <button onclick="applyPreset('attack')" class="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-colors">
-          🛡️ Preset: Over-Ceiling Attack
+          Preset: Over-Ceiling Attack
         </button>
         <button onclick="applyPreset('proof')" class="bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-colors">
-          🤖 Preset: Valid Proof
+          Preset: Valid Proof
         </button>
       </div>
 
@@ -417,7 +417,7 @@
           scope: schema,
           proof_artifacts: proof
         },
-        amount_in_escrow: 5000
+        amount_in_escrow: parseFloat(document.getElementById('inp-p-amt').value) || 500
       };
       logToTerminal('REQUEST', 'POST', '/v1/relay/escrow/settle', payload);
 
