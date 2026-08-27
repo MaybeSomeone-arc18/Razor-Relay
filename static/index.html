@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Razor-Relay Zero-Trust Gateway</title>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -14,14 +14,13 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        syne: ['Syne', 'sans-serif'],
-                        space: ['Space Grotesk', 'sans-serif'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        obsidian: '#05050A',
-                        cardBg: 'rgba(13, 14, 22, 0.6)',
-                        cardBorder: 'rgba(255, 255, 255, 0.07)',
+                        obsidian: '#0B0D12',
+                        cardBg: '#131620',
+                        cardBorder: '#232630',
                     }
                 }
             }
@@ -29,54 +28,37 @@
     </script>
     <style>
         body {
-            background: linear-gradient(135deg, #030305 0%, #08080E 100%);
-            color: #ffffff;
-            font-family: 'Space Grotesk', sans-serif;
+            background-color: #0B0D12;
+            color: #F3F4F6;
+            font-family: 'Inter', system-ui, sans-serif;
             overflow: hidden;
             margin: 0;
             padding: 0;
             height: 100vh;
         }
 
-        /* Ambient Mesh Glows */
-        .ambient-glow-left {
-            position: absolute;
-            top: -10%;
-            left: -10%;
-            width: 40vw;
-            height: 40vw;
-            background: radial-gradient(circle, rgba(0,255,136,0.08) 0%, rgba(0,0,0,0) 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
+        .font-syne, .font-space {
+            font-family: 'Inter', system-ui, sans-serif;
         }
-        .ambient-glow-right {
-            position: absolute;
-            bottom: -10%;
-            right: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: radial-gradient(circle, rgba(255,42,109,0.06) 0%, rgba(0,0,0,0) 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
+
+        .ambient-glow-left, .ambient-glow-right {
+            display: none;
         }
 
         /* Glassmorphism Cards */
         .glass-card {
-            background: var(--tw-colors-cardBg);
-            border: 1px solid var(--tw-colors-cardBorder);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            transition: all 0.3s ease;
+            background-color: #131620;
+            border: 1px solid #232630;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            transition: all 0.2s ease;
             position: relative;
             z-index: 10;
         }
         .glass-card:hover {
-            border-color: rgba(255, 255, 255, 0.15);
+            border-color: #2F3342;
         }
         
-        .hover-emerald:hover { border-color: rgba(0, 255, 136, 0.3); }
+        .hover-emerald:hover { border-color: #3B82F6; }
 
         /* Range Slider Styling */
         input[type=range] {
@@ -86,18 +68,18 @@
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
+            height: 14px;
+            width: 14px;
             border-radius: 50%;
-            background: #fff;
-            box-shadow: 0 0 10px #00FF88;
+            background: #3B82F6;
             cursor: pointer;
-            margin-top: -6px;
+            margin-top: -5px;
+            border: none;
         }
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
             height: 4px;
-            background: rgba(255,255,255,0.1);
+            background: #232630;
             border-radius: 2px;
         }
         input[type=range]:focus {
@@ -106,41 +88,57 @@
 
         /* Inputs */
         .input-dark {
-            background: rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #fff;
-            font-family: 'JetBrains Mono', monospace;
+            background: #07080B;
+            border: 1px solid #232630;
+            color: #F3F4F6;
+            font-family: 'Inter', sans-serif;
             transition: all 0.2s;
         }
         .input-dark:focus {
             outline: none;
-            border-color: rgba(0, 255, 136, 0.5);
-            box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         }
 
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
         /* Badges */
         .status-badge {
-            transition: all 0.3s ease;
-            box-shadow: 0 0 20px currentColor;
+            transition: all 0.2s ease;
+            box-shadow: none;
         }
-        .badge-closed { color: #00FF88; border-color: #00FF88; text-shadow: 0 0 10px #00FF88; }
-        .badge-half-open { color: #FFB800; border-color: #FFB800; text-shadow: 0 0 10px #FFB800; }
-        .badge-open { color: #FF2A6D; border-color: #FF2A6D; text-shadow: 0 0 10px #FF2A6D; }
+        .badge-closed { 
+            color: #10B981; 
+            border-color: rgba(16, 185, 129, 0.3); 
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+        .badge-half-open { 
+            color: #F59E0B; 
+            border-color: rgba(245, 158, 11, 0.3); 
+            background-color: rgba(245, 158, 11, 0.1);
+        }
+        .badge-open { 
+            color: #EF4444; 
+            border-color: rgba(239, 68, 68, 0.3); 
+            background-color: rgba(239, 68, 68, 0.1);
+        }
 
         /* Log Entry Colors */
-        .log-success { color: #00FF88; }
-        .log-error { color: #FF2A6D; }
-        .log-info { color: #FFB800; }
-        .log-pre { color: #A0A0A0; }
-        .log-key { color: #4DEEEA; }
-        .log-string { color: #00FF88; }
-        .log-number { color: #FFB800; }
+        .log-success { color: #34D399; }
+        .log-error { color: #F87171; }
+        .log-info { color: #FBBF24; }
+        .log-pre { 
+            color: #9CA3AF; 
+            background-color: #07080B;
+            border-color: #232630;
+        }
+        .log-key { color: #818CF8; }
+        .log-string { color: #34D399; }
+        .log-number { color: #FBBF24; }
     </style>
 </head>
 <body class="flex flex-col h-screen antialiased">
