@@ -72,9 +72,9 @@ class MerkleDelegationNode(BaseModel):
         return v
 
 class MandateLimits(BaseModel):
-    per_transaction_cap: float
-    daily_cap: float
-    price_slippage_percent: float = 0.0
+    per_transaction_cap: float = Field(ge=0)
+    daily_cap: float = Field(ge=0)
+    price_slippage_percent: float = Field(ge=0.0)
 
 class UAPMandatePayload(BaseModel):
     mandate_id: str
@@ -83,8 +83,8 @@ class UAPMandatePayload(BaseModel):
     scope: str
     expiry: int
     nonce: str
-    requested_amount: float
-    quoted_price: float
+    requested_amount: float = Field(ge=0)
+    quoted_price: float = Field(ge=0)
     signature: str
 
 class SwitchTelemetry(BaseModel):
@@ -99,7 +99,7 @@ class VerificationResult(BaseModel):
 class EscrowSettleRequest(BaseModel):
     mandate_id: str
     verification: VerificationResult
-    amount_in_escrow: float
+    amount_in_escrow: float = Field(ge=0)
 
 # --- Cryptographic Merkle Chain & HMAC Verification ---
 def generate_hmac_signature(payload_dict: dict, secret: str) -> str:
@@ -253,53 +253,64 @@ def settle_escrow(req: EscrowSettleRequest):
     The AI classifies the task type → routes to a deterministic verifier.
     The verifier returns a binary pass/fail. Money never moves on AI "vibes".
     """
-    # 1. AI-Routed Verification (classification → deterministic check)
-    decision: VerificationDecision = ai_verify_task(
-        scope=req.verification.scope,
-        proof_of_work=req.verification.proof_of_work,
-        proof_artifacts=req.verification.proof_artifacts
-    )
-    
-    # 2. Log security events for injection attempts
-    if decision.schema_used == "INJECTION_BLOCKED":
-        redis_client.incrbyfloat("metrics:attacks_blocked", 1.0)
+    lock_key = f"lock:settle:{req.mandate_id}"
+    if not redis_client.setnx_ex(lock_key, "1", expire_seconds=30):
         wal.append("SECURITY_INTERVENTION", {
-            "reason": "PROMPT_INJECTION_BLOCKED",
-            "mandate_id": req.mandate_id,
-            "decision": decision.to_dict()
+            "reason": "CONCURRENT_SETTLEMENT_BLOCKED",
+            "mandate_id": req.mandate_id
         })
-        raise HTTPException(status_code=403, detail="PROMPT_INJECTION_BLOCKED")
-    
-    # 3. Binary settlement: passed → full payout, failed → full refund
-    score = 1.0 if decision.passed else 0.0
-    total_amount = req.amount_in_escrow
-    
-    # 1% platform fee (always collected — Razorpay's revenue)
-    platform_fee = total_amount * 0.01
-    remaining_pool = total_amount - platform_fee
-    
-    vendor_payout = remaining_pool * score
-    refund_amount = remaining_pool * (1 - score)
-    
-    wal.append("ESCROW_SETTLEMENT", {
-        "mandate_id": req.mandate_id,
-        "verification_decision": decision.to_dict(),
-        "schema_used": decision.schema_used,
-        "verified": decision.passed,
-        "platform_fee": platform_fee,
-        "vendor_payout": vendor_payout,
-        "refund_amount": refund_amount
-    })
-    
-    return {
-        "status": "settled",
-        "verification": decision.to_dict(),
-        "settlement_breakdown": {
-            "platform_fee": round(platform_fee, 2),
-            "vendor_payout": round(vendor_payout, 2),
-            "refund_amount": round(refund_amount, 2)
+        raise HTTPException(status_code=409, detail="CONCURRENT_SETTLEMENT_BLOCKED")
+
+    try:
+        # 1. AI-Routed Verification (classification → deterministic check)
+        decision: VerificationDecision = ai_verify_task(
+            scope=req.verification.scope,
+            proof_of_work=req.verification.proof_of_work,
+            proof_artifacts=req.verification.proof_artifacts
+        )
+        
+        # 2. Log security events for injection attempts
+        if decision.schema_used == "INJECTION_BLOCKED":
+            redis_client.incrbyfloat("metrics:attacks_blocked", 1.0)
+            wal.append("SECURITY_INTERVENTION", {
+                "reason": "PROMPT_INJECTION_BLOCKED",
+                "mandate_id": req.mandate_id,
+                "decision": decision.to_dict()
+            })
+            raise HTTPException(status_code=403, detail="PROMPT_INJECTION_BLOCKED")
+        
+        # 3. Binary settlement: passed → full payout, failed → full refund
+        score = 1.0 if decision.passed else 0.0
+        total_amount = req.amount_in_escrow
+        
+        # 1% platform fee (always collected — Razorpay's revenue)
+        platform_fee = total_amount * 0.01
+        remaining_pool = total_amount - platform_fee
+        
+        vendor_payout = remaining_pool * score
+        refund_amount = remaining_pool * (1 - score)
+        
+        wal.append("ESCROW_SETTLEMENT", {
+            "mandate_id": req.mandate_id,
+            "verification_decision": decision.to_dict(),
+            "schema_used": decision.schema_used,
+            "verified": decision.passed,
+            "platform_fee": platform_fee,
+            "vendor_payout": vendor_payout,
+            "refund_amount": refund_amount
+        })
+        
+        return {
+            "status": "settled",
+            "verification": decision.to_dict(),
+            "settlement_breakdown": {
+                "platform_fee": round(platform_fee, 2),
+                "vendor_payout": round(vendor_payout, 2),
+                "refund_amount": round(refund_amount, 2)
+            }
         }
-    }
+    finally:
+        redis_client.delete(lock_key)
 
 @app.post("/v1/relay/gateway/execute")
 def gateway_execute(payload: UAPMandatePayload):

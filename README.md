@@ -49,13 +49,13 @@ Tested against a rigorous 100-scenario synthetic batch (including adversarial pr
 Run the benchmark yourself: `pytest benchmark/test_batch_100.py -v`
 
 ## Security Posture (What is actually built)
+- **Settlement Concurrency Lock:** A strict `SETNX` lock (`lock:settle:{mandate_id}`) protects the settlement endpoint (`main.py:256`) to prevent race conditions during payout execution.
 - **Nonce Replay Locks:** Mandates include a nonce with a 24-hour TTL, verified on execution to prevent duplicate charges.
 - **Prompt Injection Shield:** A pre-flight regex layer intercepts injection attempts (e.g., "Ignore all previous instructions") and returns a `403` before the LLM even sees the payload.
 - **Server-Side HMAC:** Mandates are signed via HMAC-SHA256, ensuring agents cannot forge authorization.
 - **Fail-Closed Design:** If the LLM goes down, rate-limits, or returns garbage, the system falls back to a restrictive keyword heuristic or blocks the transaction entirely.
 
 ## Roadmap (What I'd build next)
-To take this to production, the following three components need to be implemented (these are currently out-of-scope for the prototype):
-1. **Settlement Concurrency Lock:** A strict mutex lock on the settlement endpoint to prevent race conditions during payout execution.
-2. **Async Reconciliation Worker:** A background cron job to sweep and refund `PENDING` escrows that have exceeded their 24h SLA.
-3. **Regex-First LLM Bypass:** Instead of regex as just a defense, using it to completely bypass the LLM for common tasks, introducing a caching layer for high-scale throughput.
+To take this to production, the following two components need to be implemented (these are currently out-of-scope for the prototype):
+1. **Async Reconciliation Worker:** A background cron job to sweep and refund `PENDING` escrows that have exceeded their 24h SLA.
+2. **Regex-First LLM Bypass:** Instead of regex as just a defense, using it to completely bypass the LLM for common tasks, introducing a caching layer for high-scale throughput.

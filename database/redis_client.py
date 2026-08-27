@@ -58,6 +58,11 @@ class RedisStateStore:
                 return lst[start:]
             else:
                 return lst[start:end+1]
+        elif cmd == "DEL":
+            if key in self._mock_db:
+                del self._mock_db[key]
+                return 1
+            return 0
         return None
 
     def setnx_ex(self, key: str, value: str, expire_seconds: int):
@@ -74,3 +79,6 @@ class RedisStateStore:
     def incrbyfloat(self, key: str, value: float):
         res = self._call("INCRBYFLOAT", key, str(value))
         return float(res) if res else 0.0
+
+    def delete(self, key: str):
+        return self._call("DEL", key)
