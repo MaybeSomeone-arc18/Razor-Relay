@@ -212,7 +212,11 @@ def _get_ollama_response(prompt: str) -> Optional[str]:
         res = requests.post(f"{base_url}/api/generate", json={
             "model": model,
             "prompt": prompt,
-            "stream": False
+            "stream": False,
+            "options": {
+                "temperature": 0.0,
+                "seed": 42
+            }
         }, timeout=10)
         res.raise_for_status()
         return res.json().get("response")
