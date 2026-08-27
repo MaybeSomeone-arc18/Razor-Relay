@@ -11,8 +11,11 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Mulish:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Mulish:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   
+  <!-- Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -23,20 +26,29 @@
             mono: ['JetBrains Mono', 'monospace'],
           },
           colors: {
-            // Razorpay Blade Design Tokens
             blade: {
-              navy: {
-                dark: '#02042B',
-                card: '#0B192C',
-                light: '#070F1E'
-              },
-              blue: {
-                primary: '#2563EB',
-                hover: '#1D4ED8'
-              },
-              teal: {
-                neon: '#00D290'
-              }
+              navy: { dark: '#02042B', card: '#0B192C', light: '#070F1E', deep: '#0F172A' },
+              blue: { primary: '#2563EB', hover: '#1D4ED8', text: '#0B5CFF' },
+              teal: { neon: '#00D290' }
+            }
+          },
+          animation: {
+            'marquee': 'marquee 35s linear infinite',
+            'fade-up': 'fadeUp 0.5s ease-out forwards',
+            'fade-in': 'fadeIn 0.3s ease-out forwards',
+          },
+          keyframes: {
+            marquee: {
+              '0%': { transform: 'translateX(0%)' },
+              '100%': { transform: 'translateX(-100%)' },
+            },
+            fadeUp: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
             }
           }
         }
@@ -45,19 +57,64 @@
   </script>
 
   <style>
-    /* Smooth transitions for theme toggle */
+    /* Global Transitions */
     * {
       transition-property: background-color, border-color, color, fill, stroke;
       transition-duration: 300ms;
     }
+    
+    /* Hide scrollbar for carousels/marquees */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Accordion Utilities */
+    .accordion-content {
+      transition: max-height 0.3s ease-out, opacity 0.3s ease-out, padding 0.3s ease;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+    }
+    .accordion-content.open {
+      max-height: 200px; /* Arbitrary large height */
+      opacity: 1;
+    }
+    .accordion-icon {
+      transition: transform 0.3s ease;
+    }
+    .accordion-icon.rotate-180 {
+      transform: rotate(180deg);
+    }
   </style>
 </head>
-<body class="bg-[#F8FAFC] dark:bg-blade-navy-dark text-slate-600 dark:text-slate-300 antialiased min-h-screen flex flex-col selection:bg-blade-blue-primary/30">
+<body class="bg-[#F8FAFC] dark:bg-blade-navy-dark text-slate-600 dark:text-[#94A3B8] antialiased min-h-screen flex flex-col selection:bg-blade-blue-primary/30">
 
-  <!-- Header -->
-  <nav class="w-full bg-white/80 dark:bg-[#070F1E]/80 backdrop-blur-md border-b border-slate-200 dark:border-blue-500/20 py-4 px-6 flex items-center justify-between sticky top-0 z-50">
+  <!-- A. Top Protocol Marquee (Infinite Crawl) -->
+  <div class="w-full bg-slate-900 dark:bg-[#070F1E] border-b border-slate-800 text-[10px] sm:text-xs font-mono font-bold text-slate-400 py-2 overflow-hidden flex whitespace-nowrap">
+    <div class="animate-marquee flex gap-12 shrink-0 pr-12">
+      <span>AP2 PROTOCOL</span> • 
+      <span class="text-yellow-400">HTTP 402 PAYMENT REQUIRED</span> • 
+      <span>NPCI UAP</span> • 
+      <span class="text-blade-blue-text">RAZORPAY SMART COLLECT</span> • 
+      <span>RAZORPAYX PAYOUTS</span> • 
+      <span class="text-purple-400">SOLANA X402</span> • 
+      <span>ERC-7579</span>
+    </div>
+    <!-- Duplicate for seamless looping -->
+    <div class="animate-marquee flex gap-12 shrink-0 pr-12" aria-hidden="true">
+      <span>AP2 PROTOCOL</span> • 
+      <span class="text-yellow-400">HTTP 402 PAYMENT REQUIRED</span> • 
+      <span>NPCI UAP</span> • 
+      <span class="text-blade-blue-text">RAZORPAY SMART COLLECT</span> • 
+      <span>RAZORPAYX PAYOUTS</span> • 
+      <span class="text-purple-400">SOLANA X402</span> • 
+      <span>ERC-7579</span>
+    </div>
+  </div>
+
+  <!-- B. Navigation Bar -->
+  <nav class="w-full bg-white/90 dark:bg-blade-navy-dark/90 backdrop-blur-md border-b border-slate-200 dark:border-blue-500/20 py-4 px-6 flex items-center justify-between sticky top-0 z-50 transition-colors">
     <div class="flex items-center gap-4">
-      <span class="font-black text-xl tracking-tight text-[#02042B] dark:text-white">RAZOR-RELAY</span>
+      <span class="font-black text-xl tracking-tight text-[#02042B] dark:text-white uppercase">RAZOR-RELAY</span>
       <span class="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-blade-teal-neon/10 text-blade-teal-neon border border-blade-teal-neon/20 text-[10px] font-bold tracking-widest uppercase">
         Track 01 // Agentic Commerce
       </span>
@@ -65,172 +122,345 @@
     <div class="flex items-center gap-6 text-sm font-bold">
       <!-- Theme Switcher -->
       <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors focus:outline-none">
-        <!-- Sun Icon (shows in dark mode) -->
-        <svg id="sunIcon" class="hidden w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-        <!-- Moon Icon (shows in light mode) -->
-        <svg id="moonIcon" class="hidden w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+        <i data-lucide="sun" id="sunIcon" class="hidden w-5 h-5 text-yellow-500"></i>
+        <i data-lucide="moon" id="moonIcon" class="hidden w-5 h-5 text-slate-600"></i>
       </button>
 
-      <span class="flex items-center gap-2 text-[#02042B] dark:text-slate-300">
-        <span class="relative flex h-2.5 w-2.5">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blade-teal-neon opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-blade-teal-neon"></span>
-        </span>
-        SYSTEM ONLINE
-      </span>
-      <a href="/docs" class="hidden md:inline-block text-slate-500 hover:text-[#02042B] dark:text-slate-400 dark:hover:text-white transition-colors">API Docs</a>
-      <a href="/ui" class="hidden sm:inline-flex items-center gap-2 text-blade-blue-primary hover:text-blade-blue-hover transition-colors">
+      <a href="/docs" class="hidden md:inline-block text-slate-500 hover:text-[#02042B] dark:text-slate-400 dark:hover:text-white transition-colors">Swagger API</a>
+      <a href="/ui" class="bg-blade-blue-primary hover:bg-blade-blue-hover text-white px-5 py-2.5 rounded-lg transition-colors flex items-center gap-2 shadow-md">
         Launch Dashboard &rarr;
       </a>
     </div>
   </nav>
 
-  <!-- Hero Section -->
-  <section class="relative pt-24 pb-20 px-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center flex-1">
-    <!-- Left Column -->
-    <div class="lg:col-span-7 space-y-8 relative z-10">
-      <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight text-[#02042B] dark:text-white leading-[1.1]">
-        The Sovereign Gateway for Agentic Commerce.
+  <!-- C & D. Hero Section -->
+  <section class="relative pt-24 pb-20 px-6 max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+    <!-- Left Column: Rotating Headline -->
+    <div class="lg:col-span-7 space-y-8 relative z-10 min-h-[300px]">
+      <h1 class="text-5xl sm:text-6xl lg:text-[64px] font-black tracking-tight text-[#02042B] dark:text-white leading-[1.1] relative">
+        <span class="absolute inset-0 transition-opacity duration-500 opacity-100 hero-headline">The Sovereign Gateway for Autonomous AI Commerce.</span>
+        <span class="absolute inset-0 transition-opacity duration-500 opacity-0 hero-headline">The Sovereign Gateway for Zero-Trust Micro-Escrow.</span>
+        <span class="absolute inset-0 transition-opacity duration-500 opacity-0 hero-headline">The Sovereign Gateway for Sub-Second Switch Failover.</span>
+        <span class="absolute inset-0 transition-opacity duration-500 opacity-0 hero-headline">The Sovereign Gateway for Cryptographic Mandate Bounds.</span>
+        <!-- Invisible spacer to keep container height -->
+        <span class="invisible block">The Sovereign Gateway for Cryptographic Mandate Bounds.</span>
       </h1>
 
-      <p class="text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+      <p class="text-lg sm:text-xl text-[#475569] dark:text-[#94A3B8] max-w-2xl leading-relaxed mt-4">
         Cryptographically bounded mandates, sub-second switch failover, and zero-trust micro-escrow—built natively on Razorpay payment infrastructure.
       </p>
 
-      <div class="flex flex-wrap gap-4 pt-4">
-        <a href="/ui" class="bg-blade-blue-primary hover:bg-blade-blue-hover text-white px-8 py-4 rounded-lg font-bold text-sm shadow-[0_4px_14px_0_rgba(11,92,255,0.39)] transition-all flex items-center gap-2">
+      <div class="flex flex-wrap gap-4 pt-6">
+        <a href="/ui" class="bg-blade-blue-primary hover:bg-blade-blue-hover text-white px-8 py-4 rounded-lg font-bold text-sm shadow-xl shadow-blue-500/20 transition-all flex items-center gap-2">
           Launch Interactive Dashboard &rarr;
         </a>
-        <a href="#architecture" class="bg-transparent border border-slate-300 dark:border-blue-500/30 text-[#02042B] dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-blue-500/10 px-8 py-4 rounded-lg font-bold text-sm transition-all">
-          Explore Architecture
+        <a href="#architecture" class="bg-transparent border border-slate-300 dark:border-slate-700 text-[#02042B] dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 px-8 py-4 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+          Explore Architecture <i data-lucide="layout-template" class="w-4 h-4"></i>
         </a>
       </div>
     </div>
 
-    <!-- Right Column: Interactive API Terminal -->
-    <div class="lg:col-span-5 relative z-10">
-      <div class="bg-white dark:bg-blade-navy-card/80 backdrop-blur-xl border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-[0_20px_50px_rgba(2,4,43,0.5)] overflow-hidden">
-        <div class="border-b border-slate-200 dark:border-slate-700/60 px-4 py-3 flex items-center justify-between bg-slate-50 dark:bg-[#070F1E]/50">
+    <!-- Right Column: Developer Code Block Tabs -->
+    <div class="lg:col-span-5 relative z-10 w-full animate-fade-up">
+      <div class="bg-white dark:bg-blade-navy-card/80 backdrop-blur-xl border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-2xl shadow-blue-500/5 dark:shadow-[0_20px_50px_rgba(2,4,43,0.5)] overflow-hidden">
+        <div class="border-b border-slate-200 dark:border-slate-700/60 px-4 py-3 flex items-center justify-between bg-slate-50 dark:bg-black/30">
           <div class="flex gap-1.5">
             <div class="w-3 h-3 rounded-full bg-red-400"></div>
             <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
             <div class="w-3 h-3 rounded-full bg-green-400"></div>
           </div>
-          <div class="flex gap-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer">
-            <span class="text-blade-blue-primary border-b-2 border-blade-blue-primary pb-1">cURL</span>
-            <span class="hover:text-[#02042B] dark:hover:text-white transition-colors">Python</span>
-            <span class="hover:text-[#02042B] dark:hover:text-white transition-colors">Node.js</span>
+          <div class="flex gap-6 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer">
+            <button onclick="switchCodeTab('curl')" id="tab-curl" class="text-blade-blue-text border-b-2 border-blade-blue-text pb-1 transition-colors">cURL</button>
+            <button onclick="switchCodeTab('python')" id="tab-python" class="hover:text-[#02042B] dark:hover:text-white border-b-2 border-transparent pb-1 transition-colors">Python</button>
+            <button onclick="switchCodeTab('node')" id="tab-node" class="hover:text-[#02042B] dark:hover:text-white border-b-2 border-transparent pb-1 transition-colors">Node.js</button>
           </div>
+          <button id="copy-btn" class="text-slate-400 hover:text-[#02042B] dark:hover:text-white transition-colors">
+            <i data-lucide="copy" class="w-4 h-4"></i>
+          </button>
         </div>
         
-        <div class="p-6 font-mono text-sm overflow-x-auto leading-relaxed">
-          <pre class="text-slate-700 dark:text-slate-300">
+        <div class="p-6 font-mono text-sm overflow-x-auto leading-loose bg-white dark:bg-blade-navy-deep min-h-[300px]">
+          <!-- cURL -->
+          <pre id="code-curl" class="text-slate-700 dark:text-slate-300 animate-fade-in block">
 <span class="text-pink-600 dark:text-pink-400 font-bold">curl</span> -X POST https://api.razor-relay.com/v1/relay/route \
-  -H <span class="text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 px-1 rounded">"Authorization: Bearer agent_key..."</span> \
-  -H <span class="text-yellow-600 dark:text-yellow-400">"Content-Type: application/json"</span> \
+  -H <span class="text-yellow-600 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-400/10 px-1 rounded">"Authorization: Bearer agent_key"</span> \
+  -H <span class="text-yellow-600 dark:text-yellow-300">"Content-Type: application/json"</span> \
   -d <span class="text-green-600 dark:text-blade-teal-neon">'{
   "mandate_id": "mnd_123",
   "requested_amount": 500,
   "schema": "service_rendered",
   "signature": "hmac_sha256_hash"
 }'</span></pre>
+          
+          <!-- Python -->
+          <pre id="code-python" class="text-slate-700 dark:text-slate-300 animate-fade-in hidden">
+<span class="text-pink-600 dark:text-pink-400 font-bold">import</span> requests
+
+payload = {
+    <span class="text-green-600 dark:text-blade-teal-neon">"mandate_id"</span>: <span class="text-green-600 dark:text-blade-teal-neon">"mnd_123"</span>,
+    <span class="text-green-600 dark:text-blade-teal-neon">"requested_amount"</span>: <span class="text-purple-600 dark:text-purple-400">500</span>,
+    <span class="text-green-600 dark:text-blade-teal-neon">"signature"</span>: <span class="text-green-600 dark:text-blade-teal-neon">"hmac_sha256_hash"</span>
+}
+headers = {<span class="text-green-600 dark:text-blade-teal-neon">"Authorization"</span>: <span class="text-yellow-600 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-400/10 px-1 rounded">"Bearer agent_key"</span>}
+
+res = requests.post(
+    <span class="text-green-600 dark:text-blade-teal-neon">"https://api.razor-relay.com/v1/relay/route"</span>, 
+    json=payload, headers=headers
+)
+<span class="text-blade-blue-text font-bold">print</span>(res.json())</pre>
+          
+          <!-- Node.js -->
+          <pre id="code-node" class="text-slate-700 dark:text-slate-300 animate-fade-in hidden">
+<span class="text-pink-600 dark:text-pink-400 font-bold">const</span> axios = <span class="text-blade-blue-text font-bold">require</span>(<span class="text-green-600 dark:text-blade-teal-neon">'axios'</span>);
+
+<span class="text-pink-600 dark:text-pink-400 font-bold">async function</span> <span class="text-blade-blue-text font-bold">dispatchPayload</span>() {
+  <span class="text-pink-600 dark:text-pink-400 font-bold">const</span> res = <span class="text-pink-600 dark:text-pink-400 font-bold">await</span> axios.post(
+    <span class="text-green-600 dark:text-blade-teal-neon">'https://api.razor-relay.com/v1/relay/route'</span>, 
+    { mandate_id: <span class="text-green-600 dark:text-blade-teal-neon">'mnd_123'</span>, requested_amount: <span class="text-purple-600 dark:text-purple-400">500</span> },
+    { headers: { Authorization: <span class="text-yellow-600 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-400/10 px-1 rounded">`Bearer ${process.env.KEY}`</span> } }
+  );
+  <span class="text-blade-blue-text font-bold">console</span>.log(res.data);
+}</pre>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Razorpay Data Flow Architecture Section -->
-  <section id="architecture" class="py-20 px-6 bg-slate-50 dark:bg-[#070F1E] border-y border-slate-200 dark:border-blue-500/10">
-    <div class="max-w-6xl mx-auto space-y-12">
-      <div class="text-center max-w-2xl mx-auto">
-        <h2 class="text-3xl font-black text-[#02042B] dark:text-white mb-4">Razorpay Data Flow Architecture</h2>
-        <p class="text-slate-600 dark:text-slate-400">Secure end-to-end processing mimicking Razorpay's enterprise standard.</p>
+  <!-- E. Developer Tech Stack Marquee -->
+  <div class="w-full bg-slate-50 dark:bg-black/20 border-y border-slate-200 dark:border-slate-800 text-sm font-bold text-slate-500 py-6 overflow-hidden flex whitespace-nowrap mb-20 shadow-inner">
+    <div class="animate-marquee flex gap-16 shrink-0 pr-16 items-center">
+      <span class="flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4"></i> FASTAPI</span>
+      <span class="flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i> OLLAMA LLaMA-3.2</span>
+      <span class="flex items-center gap-2"><i data-lucide="database" class="w-4 h-4"></i> REDIS WAL</span>
+      <span class="flex items-center gap-2"><i data-lucide="shield" class="w-4 h-4 text-blade-teal-neon"></i> HMAC-SHA256</span>
+      <span class="flex items-center gap-2"><i data-lucide="network" class="w-4 h-4"></i> MERKLE DELEGATION</span>
+      <span class="flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4 text-blade-blue-text"></i> RAZORPAY SDK</span>
+      <span class="flex items-center gap-2"><i data-lucide="test-tube" class="w-4 h-4"></i> PYTEST BENCHMARK</span>
+    </div>
+    <!-- Duplicate -->
+    <div class="animate-marquee flex gap-16 shrink-0 pr-16 items-center" aria-hidden="true">
+      <span class="flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4"></i> FASTAPI</span>
+      <span class="flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i> OLLAMA LLaMA-3.2</span>
+      <span class="flex items-center gap-2"><i data-lucide="database" class="w-4 h-4"></i> REDIS WAL</span>
+      <span class="flex items-center gap-2"><i data-lucide="shield" class="w-4 h-4 text-blade-teal-neon"></i> HMAC-SHA256</span>
+      <span class="flex items-center gap-2"><i data-lucide="network" class="w-4 h-4"></i> MERKLE DELEGATION</span>
+      <span class="flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4 text-blade-blue-text"></i> RAZORPAY SDK</span>
+      <span class="flex items-center gap-2"><i data-lucide="test-tube" class="w-4 h-4"></i> PYTEST BENCHMARK</span>
+    </div>
+  </div>
+
+  <!-- F. Interactive Product Architecture Tabs -->
+  <section id="architecture" class="py-16 px-6 max-w-[1200px] mx-auto w-full">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white mb-4">Enterprise Grade Infrastructure</h2>
+      <p class="text-lg text-[#475569] dark:text-[#94A3B8] max-w-2xl mx-auto">Click through the architecture layers securing autonomous agentic transactions.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+      <!-- Tab Controls -->
+      <div class="md:col-span-4 flex flex-col gap-2">
+        <button onclick="switchArchTab(1)" id="arch-tab-1" class="arch-tab text-left px-6 py-4 rounded-xl border-2 border-blade-blue-primary bg-slate-50 dark:bg-blade-navy-card/50 transition-all font-bold text-[#02042B] dark:text-white flex items-center gap-3">
+          <i data-lucide="lock" class="w-5 h-5 text-blade-blue-text"></i> Zero-Trust Mandates
+        </button>
+        <button onclick="switchArchTab(2)" id="arch-tab-2" class="arch-tab text-left px-6 py-4 rounded-xl border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-700 transition-all font-bold text-slate-500 dark:text-slate-400 hover:text-[#02042B] dark:hover:text-white flex items-center gap-3">
+          <i data-lucide="activity" class="w-5 h-5"></i> Telemetry Failover
+        </button>
+        <button onclick="switchArchTab(3)" id="arch-tab-3" class="arch-tab text-left px-6 py-4 rounded-xl border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-700 transition-all font-bold text-slate-500 dark:text-slate-400 hover:text-[#02042B] dark:hover:text-white flex items-center gap-3">
+          <i data-lucide="check-circle" class="w-5 h-5"></i> Micro-Escrow Settlement
+        </button>
+        <button onclick="switchArchTab(4)" id="arch-tab-4" class="arch-tab text-left px-6 py-4 rounded-xl border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-700 transition-all font-bold text-slate-500 dark:text-slate-400 hover:text-[#02042B] dark:hover:text-white flex items-center gap-3">
+          <i data-lucide="file-json" class="w-5 h-5"></i> Audit Write-Ahead Log
+        </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
-        <!-- Card 01 -->
-        <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-6 shadow-xl shadow-blue-500/5 dark:shadow-lg dark:hover:border-blue-500/30 transition-all">
-          <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center mb-6">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+      <!-- Tab Content Panels -->
+      <div class="md:col-span-8 bg-white dark:bg-blade-navy-deep border border-slate-200 dark:border-slate-700/60 rounded-2xl p-8 sm:p-12 shadow-xl shadow-blue-500/5 dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)] min-h-[350px] relative">
+        
+        <!-- Panel 1 -->
+        <div id="arch-panel-1" class="arch-panel absolute inset-0 p-8 sm:p-12 transition-opacity duration-300 opacity-100 z-10 flex flex-col justify-center">
+          <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-500/10 text-blade-blue-text border border-blue-200 dark:border-blue-500/20 flex items-center justify-center mb-6">
+            <i data-lucide="lock" class="w-6 h-6"></i>
           </div>
-          <h3 class="text-xl font-bold text-[#02042B] dark:text-white mb-3">Agent Client</h3>
-          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-            Cryptographic Merkle Proofs & HMAC-SHA256 Mandates. Submits cryptographically signed payloads ensuring integrity.
+          <h3 class="text-2xl font-black text-[#02042B] dark:text-white mb-4">Zero-Trust Mandates</h3>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+            Identity is verified via <strong>HMAC-SHA256 5-tuples</strong> preventing token theft. 
+            All delegation chains are cryptographically bounded via <strong>Merkle chain proofs</strong> strictly enforcing a <span class="font-mono text-blade-teal-neon text-sm">Depth &le; 2</span> limit.
           </p>
+          <ul class="space-y-2 font-mono text-sm text-slate-500 dark:text-slate-500">
+            <li><i data-lucide="check" class="w-4 h-4 inline text-blade-teal-neon mr-2"></i>Nonce Replay Protection</li>
+            <li><i data-lucide="check" class="w-4 h-4 inline text-blade-teal-neon mr-2"></i>Daily & Per-Transaction Caps</li>
+          </ul>
         </div>
 
-        <!-- Card 02 -->
-        <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-6 shadow-xl shadow-blue-500/5 dark:shadow-lg dark:hover:border-green-500/30 transition-all">
-          <div class="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20 flex items-center justify-center mb-6">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+        <!-- Panel 2 -->
+        <div id="arch-panel-2" class="arch-panel absolute inset-0 p-8 sm:p-12 transition-opacity duration-300 opacity-0 -z-10 flex flex-col justify-center">
+          <div class="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20 flex items-center justify-center mb-6">
+            <i data-lucide="activity" class="w-6 h-6"></i>
           </div>
-          <h3 class="text-xl font-bold text-[#02042B] dark:text-white mb-3">Relay Gateway</h3>
-          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-            Sub-second switch health scoring and circuit breaker failover to Smart Collect Escrow VPAs.
+          <h3 class="text-2xl font-black text-[#02042B] dark:text-white mb-4">Telemetry Failover</h3>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+            The Relay Gateway evaluates a real-time health score (<span class="font-mono text-orange-500 text-sm">H_bank</span>).
+            If UPI routing latency spikes or error rates climb, the system executes a <strong>sub-second Smart Collect Escrow VPA failover</strong>.
           </p>
+          <ul class="space-y-2 font-mono text-sm text-slate-500 dark:text-slate-500">
+            <li><i data-lucide="zap" class="w-4 h-4 inline text-orange-400 mr-2"></i>Circuit Breaker Auto-Trip</li>
+            <li><i data-lucide="zap" class="w-4 h-4 inline text-orange-400 mr-2"></i>5% Probe Traffic in HALF_OPEN state</li>
+          </ul>
         </div>
 
-        <!-- Card 03 -->
-        <div class="bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl p-6 shadow-xl shadow-blue-500/5 dark:shadow-lg dark:hover:border-purple-500/30 transition-all">
-          <div class="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-500/20 flex items-center justify-center mb-6">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+        <!-- Panel 3 -->
+        <div id="arch-panel-3" class="arch-panel absolute inset-0 p-8 sm:p-12 transition-opacity duration-300 opacity-0 -z-10 flex flex-col justify-center">
+          <div class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 flex items-center justify-center mb-6">
+            <i data-lucide="check-circle" class="w-6 h-6"></i>
           </div>
-          <h3 class="text-xl font-bold text-[#02042B] dark:text-white mb-3">Escrow State</h3>
-          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-            Local LLM task classification & 1% platform fee payouts executed securely via RazorpayX.
+          <h3 class="text-2xl font-black text-[#02042B] dark:text-white mb-4">Micro-Escrow Settlement</h3>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+            Funds are locked until a deterministic <strong>Local LLM (Llama-3.2)</strong> parses and verifies task completion schemas.
+            Upon success, funds are routed via <strong>RazorpayX Payouts</strong> minus a 1% platform fee.
+          </p>
+          <ul class="space-y-2 font-mono text-sm text-slate-500 dark:text-slate-500">
+            <li><i data-lucide="shield" class="w-4 h-4 inline text-purple-400 mr-2"></i>Prompt Injection Shield</li>
+            <li><i data-lucide="shield" class="w-4 h-4 inline text-purple-400 mr-2"></i>Deterministic Binary Output (0.0 or 1.0)</li>
+          </ul>
+        </div>
+
+        <!-- Panel 4 -->
+        <div id="arch-panel-4" class="arch-panel absolute inset-0 p-8 sm:p-12 transition-opacity duration-300 opacity-0 -z-10 flex flex-col justify-center">
+          <div class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 flex items-center justify-center mb-6">
+            <i data-lucide="file-json" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-2xl font-black text-[#02042B] dark:text-white mb-4">Audit Write-Ahead Log</h3>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+            Every transaction, verification, and revocation is recorded in an immutable <strong>Upstash Redis WAL</strong>.
+            Monotonic versioning and atomic <span class="font-mono text-sm">SETNX</span> locking prevent race conditions.
+          </p>
+          <ul class="space-y-2 font-mono text-sm text-slate-500 dark:text-slate-500">
+            <li><i data-lucide="database" class="w-4 h-4 inline text-green-400 mr-2"></i>Sub-10ms Locking</li>
+            <li><i data-lucide="database" class="w-4 h-4 inline text-green-400 mr-2"></i>Cryptographic Audit Trail</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- G. Agent Benchmark Testimonial Carousel -->
+  <section class="py-20 px-6 bg-slate-50 dark:bg-[#070F1E] border-y border-slate-200 dark:border-slate-800 overflow-hidden">
+    <div class="max-w-[1200px] mx-auto">
+      <div class="flex items-center gap-4 mb-10">
+        <h2 class="text-2xl font-black text-[#02042B] dark:text-white uppercase tracking-tight">Agent Benchmarks</h2>
+        <div class="h-px bg-slate-300 dark:bg-slate-700 flex-1"></div>
+      </div>
+
+      <!-- Carousel Container -->
+      <div class="relative overflow-hidden w-full">
+        <div id="carousel-track" class="flex transition-transform duration-700 ease-in-out gap-6" style="transform: translateX(0%);">
+          <!-- Card 1 -->
+          <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
+            <div class="text-blade-blue-text mb-4"><i data-lucide="plane-takeoff" class="w-8 h-8"></i></div>
+            <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"AI Travel Procurement Bot: 0% Budget Overrun across 500 tx."</p>
+            <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">TravelAgent-X</div>
+          </div>
+          <!-- Card 2 -->
+          <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
+            <div class="text-blade-teal-neon mb-4"><i data-lucide="shopping-bag" class="w-8 h-8"></i></div>
+            <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"D2C Scraping Agent: ₹1.2M Secured with 0 False Positive Releases."</p>
+            <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">ScrapeCommerce</div>
+          </div>
+          <!-- Card 3 -->
+          <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
+            <div class="text-purple-500 mb-4"><i data-lucide="building-2" class="w-8 h-8"></i></div>
+            <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"B2B Enterprise Bot: Sub-15ms Latency under 500 concurrent requests."</p>
+            <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">EnterpriseSync</div>
+          </div>
+          <!-- Clone for looping logic (simplified JS will handle sliding) -->
+          <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] shrink-0 bg-white dark:bg-blade-navy-card border border-slate-200 dark:border-slate-700/60 rounded-xl p-8 shadow-sm">
+            <div class="text-blade-blue-text mb-4"><i data-lucide="plane-takeoff" class="w-8 h-8"></i></div>
+            <p class="text-lg font-medium text-[#02042B] dark:text-white mb-6 leading-snug">"AI Travel Procurement Bot: 0% Budget Overrun across 500 tx."</p>
+            <div class="text-sm font-bold text-slate-500 uppercase tracking-widest">TravelAgent-X</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- H. Security & Compliance FAQ Accordion -->
+  <section class="py-24 px-6 max-w-[800px] mx-auto w-full">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl font-black text-[#02042B] dark:text-white mb-4">Security & Compliance</h2>
+    </div>
+
+    <div class="space-y-4">
+      <!-- Item 1 -->
+      <div class="bg-white dark:bg-blade-navy-card/50 border border-slate-200 dark:border-slate-700/60 rounded-xl overflow-hidden">
+        <button class="faq-btn w-full px-6 py-5 text-left flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+          <span class="font-bold text-[#02042B] dark:text-white">How does Razor-Relay prevent AI agents from overspending?</span>
+          <i data-lucide="chevron-down" class="accordion-icon w-5 h-5 text-slate-500"></i>
+        </button>
+        <div class="accordion-content px-6 bg-slate-50 dark:bg-black/20">
+          <p class="text-slate-600 dark:text-slate-400 pb-5 text-sm leading-relaxed">
+            Every mandate defines strict boundaries including a daily aggregate cap, a per-transaction ceiling, and a maximum allowable price slippage. These are validated via HMAC-SHA256 signatures derived from the human root owner, making them cryptographically impossible for the AI to override.
+          </p>
+        </div>
+      </div>
+
+      <!-- Item 2 -->
+      <div class="bg-white dark:bg-blade-navy-card/50 border border-slate-200 dark:border-slate-700/60 rounded-xl overflow-hidden">
+        <button class="faq-btn w-full px-6 py-5 text-left flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+          <span class="font-bold text-[#02042B] dark:text-white">What happens during bank UPI switch downtime?</span>
+          <i data-lucide="chevron-down" class="accordion-icon w-5 h-5 text-slate-500"></i>
+        </button>
+        <div class="accordion-content px-6 bg-slate-50 dark:bg-black/20">
+          <p class="text-slate-600 dark:text-slate-400 pb-5 text-sm leading-relaxed">
+            The Relay Gateway monitors a real-time <span class="font-mono">H_bank</span> telemetry score. If latency or error rates breach acceptable thresholds, the system executes a sub-second circuit breaker failover, automatically routing funds to Razorpay Smart Collect Escrow VPAs instead of direct UPI Autopay.
+          </p>
+        </div>
+      </div>
+
+      <!-- Item 3 -->
+      <div class="bg-white dark:bg-blade-navy-card/50 border border-slate-200 dark:border-slate-700/60 rounded-xl overflow-hidden">
+        <button class="faq-btn w-full px-6 py-5 text-left flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+          <span class="font-bold text-[#02042B] dark:text-white">How does the system defend against prompt injection attacks?</span>
+          <i data-lucide="chevron-down" class="accordion-icon w-5 h-5 text-slate-500"></i>
+        </button>
+        <div class="accordion-content px-6 bg-slate-50 dark:bg-black/20">
+          <p class="text-slate-600 dark:text-slate-400 pb-5 text-sm leading-relaxed">
+            During escrow settlement, proof artifacts are passed through a dual-layer defense. First, a Regex Shield scans for known adversarial patterns (e.g., "ignore previous instructions"). If bypassed, the Local LLM schema parsing ensures only deterministic binary JSON outputs are accepted, completely neutralizing malicious execution.
+          </p>
+        </div>
+      </div>
+
+      <!-- Item 4 -->
+      <div class="bg-white dark:bg-blade-navy-card/50 border border-slate-200 dark:border-slate-700/60 rounded-xl overflow-hidden">
+        <button class="faq-btn w-full px-6 py-5 text-left flex justify-between items-center focus:outline-none" onclick="toggleFaq(this)">
+          <span class="font-bold text-[#02042B] dark:text-white">Why is local LLM inference used for task settlement?</span>
+          <i data-lucide="chevron-down" class="accordion-icon w-5 h-5 text-slate-500"></i>
+        </button>
+        <div class="accordion-content px-6 bg-slate-50 dark:bg-black/20">
+          <p class="text-slate-600 dark:text-slate-400 pb-5 text-sm leading-relaxed">
+            Zero-trust architecture mandates that third-party cloud APIs (like OpenAI) cannot be the final arbiter of fund settlement. By utilizing a localized Llama-3.2 model, we guarantee deterministic, auditable, and completely secure verification logic that runs entirely within our secured enclave.
           </p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Verified Metrics Grid -->
-  <section class="py-20 px-6 bg-white dark:bg-[#070F1E] border-t border-slate-200 dark:border-blue-500/10">
-    <div class="max-w-6xl mx-auto">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl font-black text-[#02042B] dark:text-white mb-4">Production Standards & Verified Metrics</h2>
-      </div>
-      
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="p-6 bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-none dark:hover:border-blue-500/30 transition-all text-center lg:text-left">
-          <h4 class="text-xs font-bold text-slate-500 tracking-wider mb-2 uppercase">Latency</h4>
-          <div class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white font-mono mb-2">&lt; 15ms</div>
-          <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">Sub-second execution</p>
-        </div>
-
-        <div class="p-6 bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-none dark:hover:border-blue-500/30 transition-all text-center lg:text-left">
-          <h4 class="text-xs font-bold text-slate-500 tracking-wider mb-2 uppercase">Security Accuracy</h4>
-          <div class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white font-mono mb-2">98.0%</div>
-          <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">0 False Positive releases across 100 scenarios</p>
-        </div>
-
-        <div class="p-6 bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-none dark:hover:border-blue-500/30 transition-all text-center lg:text-left">
-          <h4 class="text-xs font-bold text-slate-500 tracking-wider mb-2 uppercase">Failover Speed</h4>
-          <div class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white font-mono mb-2">&lt; 10ms</div>
-          <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">Smart Collect VPA circuit breaker trip</p>
-        </div>
-
-        <div class="p-6 bg-white dark:bg-blade-navy-card/80 border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl shadow-blue-500/5 dark:shadow-none dark:hover:border-blue-500/30 transition-all text-center lg:text-left">
-          <h4 class="text-xs font-bold text-slate-500 tracking-wider mb-2 uppercase">Unbound Overhead</h4>
-          <div class="text-3xl sm:text-4xl font-black text-[#02042B] dark:text-white font-mono mb-2">0%</div>
-          <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">Zero financial actions by un-gated prompts</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="py-10 border-t border-slate-200 dark:border-blue-500/20 bg-[#F8FAFC] dark:bg-[#02042B] text-center space-y-6">
+  <!-- I. Footer -->
+  <footer class="py-12 border-t border-slate-200 dark:border-blue-500/20 bg-white dark:bg-[#02042B] text-center space-y-6">
     <p class="text-slate-500 font-bold text-sm tracking-wider uppercase">
       Razor-Relay // Built for the Razorpay AI Buildathon 2026
     </p>
-    <a href="/ui" class="inline-flex items-center gap-2 bg-[#02042B] dark:bg-slate-800 hover:bg-[#0B192C] dark:hover:bg-slate-700 text-white px-8 py-3.5 rounded-lg font-bold text-sm transition-all border border-slate-700">
+    <a href="/ui" class="inline-flex items-center gap-2 bg-[#02042B] dark:bg-slate-800 hover:bg-[#0B192C] dark:hover:bg-slate-700 text-white px-8 py-3.5 rounded-lg font-bold text-sm transition-all border border-transparent dark:border-slate-700">
       Enter Interactive Dashboard &rarr;
     </a>
   </footer>
 
-  <!-- Theme Toggle Script -->
+  <!-- Unified JS Engine -->
   <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // 1. Theme Engine
     const htmlElement = document.documentElement;
     const themeToggleBtn = document.getElementById('themeToggle');
     const sunIcon = document.getElementById('sunIcon');
@@ -257,15 +487,118 @@
       updateIcons(theme);
     }
 
-    // Initialize Theme
-    const storedTheme = localStorage.getItem('razorpay_theme') || 'dark'; // Default to dark mode
+    const storedTheme = localStorage.getItem('razorpay_theme') || 'dark';
     setTheme(storedTheme);
 
-    // Toggle event listener
     themeToggleBtn.addEventListener('click', () => {
       const currentTheme = htmlElement.classList.contains('dark') ? 'dark' : 'light';
       setTheme(currentTheme === 'dark' ? 'light' : 'dark');
     });
+
+    // 2. Rotating Hero Headline
+    const headlines = document.querySelectorAll('.hero-headline');
+    let currentHeadline = 0;
+    
+    if (headlines.length > 1) { // -1 because of invisible spacer
+      setInterval(() => {
+        headlines[currentHeadline].classList.remove('opacity-100');
+        headlines[currentHeadline].classList.add('opacity-0');
+        
+        currentHeadline = (currentHeadline + 1) % (headlines.length - 1);
+        
+        headlines[currentHeadline].classList.remove('opacity-0');
+        headlines[currentHeadline].classList.add('opacity-100');
+      }, 2500);
+    }
+
+    // 3. Developer Code Tabs
+    function switchCodeTab(lang) {
+      // Reset tabs
+      ['curl', 'python', 'node'].forEach(l => {
+        document.getElementById(`tab-${l}`).className = "hover:text-[#02042B] dark:hover:text-white border-b-2 border-transparent pb-1 transition-colors";
+        document.getElementById(`code-${l}`).classList.add('hidden');
+        document.getElementById(`code-${l}`).classList.remove('block');
+      });
+      // Active tab
+      document.getElementById(`tab-${lang}`).className = "text-blade-blue-text border-b-2 border-blade-blue-text pb-1 transition-colors";
+      document.getElementById(`code-${lang}`).classList.remove('hidden');
+      document.getElementById(`code-${lang}`).classList.add('block');
+    }
+
+    // Copy to clipboard
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      const activePre = document.querySelector('pre.block').innerText;
+      navigator.clipboard.writeText(activePre);
+      const btn = document.getElementById('copy-btn');
+      btn.innerHTML = '<i data-lucide="check" class="w-4 h-4 text-blade-teal-neon"></i>';
+      lucide.createIcons();
+      setTimeout(() => {
+        btn.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i>';
+        lucide.createIcons();
+      }, 2000);
+    });
+
+    // 4. Interactive Architecture Tabs
+    function switchArchTab(index) {
+      // Reset all buttons
+      document.querySelectorAll('.arch-tab').forEach(btn => {
+        btn.className = "arch-tab text-left px-6 py-4 rounded-xl border-2 border-transparent hover:border-slate-300 dark:hover:border-slate-700 transition-all font-bold text-slate-500 dark:text-slate-400 hover:text-[#02042B] dark:hover:text-white flex items-center gap-3";
+      });
+      // Reset all panels
+      document.querySelectorAll('.arch-panel').forEach(panel => {
+        panel.classList.remove('opacity-100', 'z-10');
+        panel.classList.add('opacity-0', '-z-10');
+      });
+
+      // Set Active
+      const activeBtn = document.getElementById(`arch-tab-${index}`);
+      activeBtn.className = "arch-tab text-left px-6 py-4 rounded-xl border-2 border-blade-blue-primary bg-slate-50 dark:bg-blade-navy-card/50 transition-all font-bold text-[#02042B] dark:text-white flex items-center gap-3";
+      
+      const activeIcon = activeBtn.querySelector('i');
+      activeIcon.classList.add('text-blade-blue-text'); // highlight icon
+
+      const activePanel = document.getElementById(`arch-panel-${index}`);
+      activePanel.classList.remove('opacity-0', '-z-10');
+      activePanel.classList.add('opacity-100', 'z-10');
+    }
+
+    // 5. Agent Benchmark Carousel
+    const track = document.getElementById('carousel-track');
+    let position = 0;
+    
+    // Simplistic auto-slide. (Assumes lg screens where 33.33% is width)
+    setInterval(() => {
+      position++;
+      if (position > 2) {
+        position = 0;
+        track.style.transition = 'none'; // Snap back
+        track.style.transform = `translateX(0%)`;
+        setTimeout(() => {
+          track.style.transition = 'transform 700ms ease-in-out';
+          position = 1;
+          track.style.transform = `translateX(-${position * 33.333}%)`;
+        }, 50);
+      } else {
+        track.style.transform = `translateX(-${position * 33.333}%)`;
+      }
+    }, 4000);
+
+    // 6. FAQ Accordion
+    function toggleFaq(btn) {
+      const content = btn.nextElementSibling;
+      const icon = btn.querySelector('.accordion-icon');
+      
+      const isOpen = content.classList.contains('open');
+      
+      // Close all
+      document.querySelectorAll('.accordion-content').forEach(c => c.classList.remove('open'));
+      document.querySelectorAll('.accordion-icon').forEach(i => i.classList.remove('rotate-180'));
+      
+      if (!isOpen) {
+        content.classList.add('open');
+        icon.classList.add('rotate-180');
+      }
+    }
   </script>
 </body>
 </html>
