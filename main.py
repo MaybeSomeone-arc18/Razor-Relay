@@ -7,7 +7,7 @@ import logging
 from typing import Optional, Dict, Any
 from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from pydantic import BaseModel, Field, field_validator
 from dotenv import load_dotenv
 import requests
@@ -27,11 +27,12 @@ logger = logging.getLogger("razor-relay")
 app = FastAPI(title="Razor-Relay Zero-Trust Gateway")
 
 os.makedirs("static", exist_ok=True)
-app.mount("/ui", StaticFiles(directory="static", html=True), name="static")
+app.mount("/ui", StaticFiles(directory="static", html=True), name="ui_static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/")
-def root_redirect():
-    return RedirectResponse(url="/ui")
+@app.get("/", response_class=FileResponse)
+async def read_landing():
+    return FileResponse("static/landing.html")
 
 # --- Redis Protection Layer (Upstash REST & In-Memory Fallback) ---
 from database.redis_client import RedisStateStore

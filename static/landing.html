@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razor-Relay | Zero-Trust Escrow Gateway</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['"Instrument Serif"', 'serif'],
+                        sans: ['"Space Grotesk"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        sky: '#2C3740',
+                        sand: '#F5F0E6',
+                        ink: '#1C242B',
+                        neon: '#00FF88',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-bg {
+            background-color: #2C3740;
+            background-image: url('/static/background.svg');
+            background-size: cover;
+            background-position: center;
+            background-blend-mode: overlay;
+        }
+        .neon-glow {
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-sand text-ink antialiased">
+    <!-- Navigation -->
+    <nav class="absolute top-0 w-full z-50 px-6 py-6 flex justify-between items-center text-sand">
+        <div class="flex items-center gap-4">
+            <span class="font-serif text-2xl tracking-wide">RAZOR-RELAY</span>
+            <span class="text-[10px] font-mono tracking-widest uppercase px-3 py-1 border border-sand/30 rounded-full">TRACK 01 // AGENTIC COMMERCE</span>
+        </div>
+        <div class="flex gap-6 text-sm font-sans tracking-wide">
+            <a href="/docs" class="hover:text-neon transition-colors">Swagger API</a>
+            <a href="/ui" class="hover:text-neon transition-colors border border-sand/50 px-4 py-1.5 rounded-full">Live Dashboard</a>
+        </div>
+    </nav>
+
+    <!-- Top Sky Zone (Hero) -->
+    <header class="hero-bg min-h-[90vh] flex flex-col justify-center text-sand px-6 pt-24 relative overflow-hidden">
+        <div class="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            
+            <div class="space-y-8 z-10">
+                <div class="inline-block border border-neon/50 text-neon px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-widest neon-glow">
+                    Zero-Trust Agentic Escrow Gateway
+                </div>
+                <h1 class="font-serif text-6xl lg:text-8xl leading-[0.9] tracking-tight">The Sovereign Gateway for Agentic Commerce.</h1>
+                <p class="font-sans text-lg lg:text-xl text-sand/80 max-w-lg font-light">Cryptographically bounded mandates, sub-second switch failover, and zero-trust micro-escrow—built natively on Razorpay payment infrastructure.</p>
+                <div class="flex gap-4 pt-4">
+                    <a href="/ui" class="bg-neon text-sky px-8 py-3 rounded-full font-mono text-sm tracking-widest uppercase hover:bg-white hover:text-sky transition-colors font-bold">Launch Demo Dashboard</a>
+                    <a href="#architecture" class="border border-sand/30 px-8 py-3 rounded-full font-mono text-sm tracking-widest uppercase hover:border-neon hover:text-neon transition-colors">Explore Architecture</a>
+                </div>
+            </div>
+
+            <!-- HUD Dashboard Preview -->
+            <div class="relative z-10 hidden lg:block">
+                <div class="bg-ink/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl transform rotate-[-2deg] hover:rotate-0 transition-transform duration-500">
+                    <img src="/static/dashboard-preview.png" alt="Razor-Relay Dashboard" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMUMyNDJCIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiNGNUYwRTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkhVRCBQUkVWSUVXPC90ZXh0Pjwvc3ZnPg=='" class="w-full rounded-xl opacity-90 hover:opacity-100 transition-opacity">
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Bottom Sand Zone (Architecture & Data) -->
+    <section id="architecture" class="py-24 px-6 bg-sand text-ink border-t border-sky/10">
+        <div class="max-w-6xl mx-auto space-y-24">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div class="space-y-4">
+                    <div class="text-sky font-serif text-5xl">01</div>
+                    <h3 class="font-sans font-bold text-xl">Mandate Handshake</h3>
+                    <p class="font-sans text-sky/80 leading-relaxed">HMAC-SHA256 5-tuple signatures & Merkle proofs (<span class="font-mono bg-sky/5 px-1 rounded text-sm">Depth &le; 2</span>). Unforgeable constraints bind agents to precise limits.</p>
+                </div>
+                <div class="space-y-4">
+                    <div class="text-sky font-serif text-5xl">02</div>
+                    <h3 class="font-sans font-bold text-xl">Telemetry Failover</h3>
+                    <p class="font-sans text-sky/80 leading-relaxed">Real-time switch health scoring (<span class="font-mono bg-sky/5 px-1 rounded text-sm">H_bank</span>) triggering sub-second failover to Razorpay Smart Collect Escrow VPAs.</p>
+                </div>
+                <div class="space-y-4">
+                    <div class="text-sky font-serif text-5xl">03</div>
+                    <h3 class="font-sans font-bold text-xl">Escrow Settlement</h3>
+                    <p class="font-sans text-sky/80 leading-relaxed">Local LLM schema routing + deterministic Python payouts (1% platform split) or automated refunds.</p>
+                </div>
+            </div>
+
+            <div class="border border-sky/20 rounded-3xl p-12 bg-white shadow-sm">
+                <h2 class="font-serif text-4xl mb-8">Verified Benchmarks Grid</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div class="border-l-2 border-neon pl-4">
+                        <div class="font-mono text-xs text-sky/60 uppercase tracking-widest mb-1">Latency</div>
+                        <div class="font-sans text-3xl font-bold">&lt; 15ms</div>
+                    </div>
+                    <div class="border-l-2 border-neon pl-4">
+                        <div class="font-mono text-xs text-sky/60 uppercase tracking-widest mb-1">Security</div>
+                        <div class="font-sans text-3xl font-bold">98.0%</div>
+                        <div class="text-xs text-sky/60 mt-1">Adversarial accuracy with 0 False Positive releases</div>
+                    </div>
+                    <div class="border-l-2 border-neon pl-4">
+                        <div class="font-mono text-xs text-sky/60 uppercase tracking-widest mb-1">Failover</div>
+                        <div class="font-sans text-3xl font-bold">&lt; 10ms</div>
+                        <div class="text-xs text-sky/60 mt-1">Instant Smart Collect Virtual Account circuit breaker trip</div>
+                    </div>
+                    <div class="border-l-2 border-neon pl-4">
+                        <div class="font-mono text-xs text-sky/60 uppercase tracking-widest mb-1">Unbound Overhead</div>
+                        <div class="font-sans text-3xl font-bold">0%</div>
+                        <div class="text-xs text-sky/60 mt-1">Zero financial actions executed by un-gated LLM prompts</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <footer class="bg-ink text-sand py-12 px-6 border-t border-white/10">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-sm font-mono tracking-widest text-sand/60">
+                Razor-Relay // Built for the Razorpay AI Buildathon 2026
+            </div>
+            <a href="/ui" class="bg-sand text-ink px-8 py-3 rounded-full font-mono text-sm tracking-widest uppercase hover:bg-neon transition-colors font-bold">Enter Dashboard</a>
+        </div>
+    </footer>
+</body>
+</html>
