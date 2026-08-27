@@ -68,6 +68,8 @@ def generate_valid_payload(
 
 @pytest.fixture(autouse=True)
 def setup_and_teardown():
+    # Force use of mock DB
+    redis_client.url = None
     # Clear mock redis before each test
     redis_client._mock_db.clear()
     
@@ -76,9 +78,9 @@ def setup_and_teardown():
     breaker.latency = 50.0
     breaker.error_rate = 0.0
     
-    # Clear WAL
-    with open(wal.filename, "w") as f:
-        f.write("")
+    # Disable live Razorpay API for synthetic tests
+    import config.razorpay_config
+    config.razorpay_config.razorpay_client = None
     yield
 
 # =====================================================
@@ -251,8 +253,7 @@ def test_scenario_14_escrow_webhook_valid():
 def test_scenario_15_wal_version_increments():
     """Scenario 15: State Write-Ahead Log version increments - Revoke generates log entry."""
     client.post("/v1/relay/mandate/revoke", params={"mandate_id": "wal_test_15"})
-    with open(wal.filename, "r") as f:
-        lines = f.readlines()
+    lines = redis_client._call("LRANGE", "wal_wal_test_15", 0, -1)
     assert len(lines) > 0
     last_log = json.loads(lines[-1])
     assert last_log["action"] == "MANDATE_REVOKED"
@@ -262,8 +263,7 @@ def test_scenario_16_wal_audit_digest_execute():
     """Scenario 16: State Write-Ahead Log audit digest verification - Execution logs."""
     payload = generate_valid_payload(mandate_id="wal_test_16", requested_amount=42.0)
     client.post("/v1/relay/gateway/execute", json=payload)
-    with open(wal.filename, "r") as f:
-        lines = f.readlines()
+    lines = redis_client._call("LRANGE", "wal_wal_test_16", 0, -1)
     last_log = json.loads(lines[-1])
     assert last_log["action"] == "MANDATE_AUTHORIZED"
     assert last_log["details"]["mandate_id"] == "wal_test_16"
@@ -282,8 +282,7 @@ def test_scenario_17_wal_escrow_settle():
         "amount_in_escrow": 100.0
     }
     client.post("/v1/relay/escrow/settle", json=req)
-    with open(wal.filename, "r") as f:
-        lines = f.readlines()
+    lines = redis_client._call("LRANGE", "wal_wal_test_17", 0, -1)
     last_log = json.loads(lines[-1])
     assert last_log["action"] == "ESCROW_SETTLEMENT"
     assert last_log["details"]["mandate_id"] == "wal_test_17"
@@ -303,9 +302,8 @@ def test_scenario_19_edge_case_slippage_within_tolerance():
 
 def test_scenario_20_wal_circuit_breaker_transitions():
     """Scenario 20: WAL records circuit breaker state transitions."""
-    client.post("/v1/relay/chaos/inject", json={"latency_ms": 300, "rolling_error_rate": 0.9})
-    with open(wal.filename, "r") as f:
-        lines = f.readlines()
+    client.post("/v1/relay/chaos/inject", json={"latency_ms": 400.0, "rolling_error_rate": 0.8})
+    lines = redis_client._call("LRANGE", "wal_system", 0, -1)
     last_log = json.loads(lines[-1])
     assert last_log["action"] == "CIRCUIT_BREAKER_TRANSITION"
     assert last_log["details"]["new_state"] == "OPEN"
@@ -330,8 +328,7 @@ def test_scenario_21_prompt_injection_blocked():
     assert response.json()["detail"] == "PROMPT_INJECTION_BLOCKED"
     
     # Verify WAL recorded the security event
-    with open(wal.filename, "r") as f:
-        lines = f.readlines()
+    lines = redis_client._call("LRANGE", "wal_injection_test_21", 0, -1)
     last_log = json.loads(lines[-1])
     assert last_log["action"] == "SECURITY_INTERVENTION"
     assert last_log["details"]["reason"] == "PROMPT_INJECTION_BLOCKED"

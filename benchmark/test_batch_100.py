@@ -55,12 +55,16 @@ def _track(category: str, scenario_id: str, expected_pass: bool, actual_pass: bo
 
 @pytest.fixture(autouse=True)
 def reset_state():
+    # Force use of mock DB
+    redis_client.url = None
     redis_client._mock_db.clear()
     breaker.state = CircuitBreaker.STATE_CLOSED
     breaker.latency = 50.0
     breaker.error_rate = 0.0
-    with open(wal.filename, "w") as f:
-        f.write("")
+    
+    # Disable live Razorpay API for synthetic tests
+    import config.razorpay_config
+    config.razorpay_config.razorpay_client = None
     yield
 
 

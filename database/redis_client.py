@@ -42,6 +42,22 @@ class RedisStateStore:
             current = float(self._mock_db.get(key, 0.0))
             self._mock_db[key] = str(current + val)
             return self._mock_db[key]
+        elif cmd == "RPUSH":
+            val = args[2]
+            if key not in self._mock_db:
+                self._mock_db[key] = []
+            self._mock_db[key].append(val)
+            return len(self._mock_db[key])
+        elif cmd == "LRANGE":
+            start = int(args[2])
+            end = int(args[3])
+            if key not in self._mock_db:
+                return []
+            lst = self._mock_db[key]
+            if end == -1:
+                return lst[start:]
+            else:
+                return lst[start:end+1]
         return None
 
     def setnx_ex(self, key: str, value: str, expire_seconds: int):
