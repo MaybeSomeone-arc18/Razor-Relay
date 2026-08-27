@@ -83,7 +83,7 @@ export default function LandingPage() {
             transition={{ delay: 0.2 }}
             className="text-lg text-neutral-400 max-w-xl font-light leading-relaxed"
           >
-            Cryptographically bounded mandates, sub-second switch failover, and zero-trust micro-escrow—built natively on Razorpay infrastructure.
+            Cryptographically bounded mandates, deterministic Python verifiers, and zero-trust micro-escrow—built natively on Razorpay infrastructure.
           </motion.p>
 
           <motion.div 
@@ -183,7 +183,7 @@ export default function LandingPage() {
               
               {/* Hover Tooltip */}
               <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black text-xs font-mono px-3 py-1.5 rounded-lg whitespace-nowrap pointer-events-none">
-                JWT Auth &middot; TLS 1.3
+                HMAC-SHA256 Auth &middot; 24h Nonce
               </div>
             </div>
 
@@ -209,7 +209,7 @@ export default function LandingPage() {
               <p className="text-sm text-neutral-400">Deterministic payouts via Razorpay API & Redis WAL.</p>
               
               <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black text-xs font-mono px-3 py-1.5 rounded-lg whitespace-nowrap pointer-events-none">
-                ACID Compliant
+                Redis WAL (Write-Ahead Log)
               </div>
             </div>
           </div>
@@ -304,10 +304,10 @@ response = requests.post(<br/>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { title: "JWT Auth", desc: "Stateless, verifiable agent identity.", icon: <Lock className="w-5 h-5" /> },
-              { title: "Row Level Security", desc: "Strict database isolation policies.", icon: <Database className="w-5 h-5" /> },
-              { title: "Rate Limiting", desc: "Token bucket throttling per agent.", icon: <Activity className="w-5 h-5" /> },
-              { title: "CORS Policies", desc: "Strict origin whitelisting.", icon: <Code2 className="w-5 h-5" /> }
+              { title: "HMAC-SHA256 Auth", desc: "Cryptographically verifiable agent identity.", icon: <Lock className="w-5 h-5" /> },
+              { title: "Upstash Redis WAL", desc: "Immutable state tracking and nonce replay protection.", icon: <Database className="w-5 h-5" /> },
+              { title: "Concurrency Locks", desc: "SETNX Redis locks prevent settlement race conditions.", icon: <Activity className="w-5 h-5" /> },
+              { title: "Injection Shield", desc: "Pre-flight Regex layer catches LLM bypass attempts.", icon: <Shield className="w-5 h-5" /> }
             ].map((feature, i) => (
               <div key={i} className="p-6 bg-[#131620] border border-neutral-800 rounded-2xl hover:bg-neutral-900 transition-colors">
                 <div className="text-[#00FF88] mb-4">{feature.icon}</div>
