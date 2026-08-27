@@ -313,24 +313,35 @@
       const mandate_id = document.getElementById('inp-p-mandate').value;
       const amount = parseFloat(document.getElementById('inp-p-amt').value);
       
-      const payload = { mandate_id, requested_amount: amount };
-      logToTerminal('REQUEST', 'POST', '/v1/relay/route', payload);
+      const payload = { 
+        mandate_id, 
+        requested_amount: amount,
+        delegation: { human_root_hash: "mock", primary_agent_id: "agent", delegation_depth: 0 },
+        limits: { per_transaction_cap: 10000, daily_cap: 50000, price_slippage_percent: 5.0 },
+        scope: "test",
+        expiry: Math.floor(Date.now() / 1000) + 3600,
+        nonce: "mock_" + Date.now(),
+        quoted_price: amount,
+        signature: "invalid_mock_signature"
+      };
+      
+      logToTerminal('REQUEST', 'POST', '/v1/relay/gateway/execute', payload);
 
       try {
-        const res = await fetch('/v1/relay/route', {
+        const res = await fetch('/v1/relay/gateway/execute', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(payload)
         });
         const data = await res.json();
         if(res.ok) {
-          logToTerminal('GATEWAY_APPROVED', 'POST', '/v1/relay/route', data);
+          logToTerminal('GATEWAY_APPROVED', 'POST', '/v1/relay/gateway/execute', data);
         } else {
-          logToTerminal('GATEWAY_REJECTED', 'POST', '/v1/relay/route', data);
+          logToTerminal('GATEWAY_REJECTED', 'POST', '/v1/relay/gateway/execute', data);
           updateMetrics(0, true);
         }
       } catch (err) {
-        logToTerminal('GATEWAY_REJECTED', 'POST', '/v1/relay/route', {error: err.message});
+        logToTerminal('GATEWAY_REJECTED', 'POST', '/v1/relay/gateway/execute', {error: err.message});
       }
     });
 
@@ -347,7 +358,15 @@
         return;
       }
 
-      const payload = { mandate_id, schema_name: schema, proof_artifact: proof };
+      const payload = { 
+        mandate_id, 
+        verification: {
+          proof_of_work: "proof_mock",
+          scope: schema,
+          proof_artifacts: proof
+        },
+        amount_in_escrow: 5000
+      };
       logToTerminal('REQUEST', 'POST', '/v1/relay/escrow/settle', payload);
 
       try {
@@ -375,23 +394,21 @@
       e.preventDefault();
       const mandate_id = document.getElementById('inp-r-mandate').value;
       
-      const payload = { mandate_id };
-      logToTerminal('REQUEST', 'POST', '/v1/relay/mandate/revoke', payload);
+      const endpoint = '/v1/relay/mandate/revoke?mandate_id=' + encodeURIComponent(mandate_id);
+      logToTerminal('REQUEST', 'POST', endpoint, {});
 
       try {
-        const res = await fetch('/v1/relay/mandate/revoke', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(payload)
+        const res = await fetch(endpoint, {
+          method: 'POST'
         });
         const data = await res.json();
         if(res.ok) {
-          logToTerminal('GATEWAY_APPROVED', 'POST', '/v1/relay/mandate/revoke', data);
+          logToTerminal('GATEWAY_APPROVED', 'POST', endpoint, data);
         } else {
-          logToTerminal('GATEWAY_REJECTED', 'POST', '/v1/relay/mandate/revoke', data);
+          logToTerminal('GATEWAY_REJECTED', 'POST', endpoint, data);
         }
       } catch (err) {
-        logToTerminal('GATEWAY_REJECTED', 'POST', '/v1/relay/mandate/revoke', {error: err.message});
+        logToTerminal('GATEWAY_REJECTED', 'POST', endpoint, {error: err.message});
       }
     });
 
@@ -405,7 +422,7 @@
       e.preventDefault();
       const payload = {
         latency_ms: parseInt(latSlider.value),
-        error_rate: parseFloat(errSlider.value)
+        rolling_error_rate: parseFloat(errSlider.value)
       };
       
       logToTerminal('REQUEST', 'POST', '/v1/relay/chaos/inject', payload);
