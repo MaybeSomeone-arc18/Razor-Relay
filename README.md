@@ -42,9 +42,9 @@ Razor-Relay operates on a strict **Zero-Trust AI** principle: AI is used for rou
 
 ## Benchmarks & Results
 Tested against a rigorous 100-scenario synthetic batch (including adversarial prompt injections and edge cases):
-- **Accuracy:** **98.0%** (Even without an LLM running, the keyword heuristic correctly routes 98/100 scenarios).
+- **Accuracy:** **96.0%** (Using the local `llama3.2:3b` model. The keyword fallback also performs at ~98%).
 - **False Positive Releases (Funds stolen):** **0**
-- **False Negative Blocks:** **2** (Ambiguous tasks safely blocked. We prefer blocked tasks over stolen money).
+- **False Negative Blocks:** **4** (Ambiguous tasks safely blocked. We prefer blocked tasks over stolen money).
 
 Run the benchmark yourself: `pytest benchmark/test_batch_100.py -v`
 
