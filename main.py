@@ -17,15 +17,22 @@ from config.razorpay_config import razorpay_client
 load_dotenv()
 
 # --- Config & Setup ---
+import sys
 import secrets
-ADMIN_KEY = os.getenv("ADMIN_KEY", "demo_admin_key")
+
+ADMIN_KEY = os.getenv("ADMIN_KEY")
+if not ADMIN_KEY:
+    if "pytest" in sys.modules:
+        ADMIN_KEY = "demo_admin_key"
+    else:
+        raise ValueError("CRITICAL SECURITY ERROR: ADMIN_KEY environment variable is not set. Refusing to start.")
 
 MANDATE_SECRET_KEY = os.getenv("MANDATE_SECRET_KEY")
 if not MANDATE_SECRET_KEY or MANDATE_SECRET_KEY == "default_secret":
     MANDATE_SECRET_KEY = hashlib.sha256(ADMIN_KEY.encode()).hexdigest()
 
 def verify_admin_key(x_admin_key: str = Header(...)):
-    if x_admin_key != ADMIN_KEY:
+    if not hmac.compare_digest(x_admin_key, ADMIN_KEY):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 UPSTASH_URL = os.getenv("UPSTASH_REDIS_REST_URL")
@@ -119,14 +126,23 @@ class EscrowSettleRequest(BaseModel):
     amount_in_escrow: float = Field(ge=0)
 
 # --- Cryptographic Merkle Chain & HMAC Verification ---
+def _make_canonical(data):
+    if isinstance(data, dict):
+        return {k: _make_canonical(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [_make_canonical(v) for v in data]
+    elif isinstance(data, float) and data.is_integer():
+        return int(data)
+    return data
+
 def generate_hmac_signature(payload_dict: dict, secret: str) -> str:
-    """Generates an HMAC-SHA256 signature using strict canonical strings."""
-    amount_int = int(payload_dict.get('requested_amount', 0))
-    canonical_payload = f"{payload_dict.get('mandate_id')}:{amount_int}:{payload_dict.get('nonce')}"
-    crypto_seed = f"{payload_dict['delegation']['human_root_hash']}:{secret}".encode('utf-8')
+    """Generates an HMAC-SHA256 signature for the full canonical payload dict."""
+    canonical_dict = _make_canonical(payload_dict)
+    crypto_seed = f"{canonical_dict['delegation']['human_root_hash']}:{secret}".encode('utf-8')
+    payload_str = json.dumps(canonical_dict, sort_keys=True, separators=(',', ':'))
     return hmac.new(
         crypto_seed,
-        canonical_payload.encode('utf-8'),
+        payload_str.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
 

@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 # Add parent directory to path to import main
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from main import app, MANDATE_SECRET_KEY, redis_client, wal, breaker, CircuitBreaker
+from main import app, MANDATE_SECRET_KEY, redis_client, wal, breaker, CircuitBreaker, _make_canonical
 
 client = TestClient(app)
 
@@ -57,10 +57,10 @@ def generate_valid_payload(
     }
     
     if sign:
-        amount_int = int(payload.get('requested_amount', 0))
-        canonical_payload = f"{payload.get('mandate_id')}:{amount_int}:{payload.get('nonce')}"
+        canonical_dict = _make_canonical(payload)
         crypto_seed = f"hash_abcd:{MANDATE_SECRET_KEY}".encode('utf-8')
-        signature = hmac.new(crypto_seed, canonical_payload.encode('utf-8'), hashlib.sha256).hexdigest()
+        payload_str = json.dumps(canonical_dict, sort_keys=True, separators=(',', ':'))
+        signature = hmac.new(crypto_seed, payload_str.encode('utf-8'), hashlib.sha256).hexdigest()
         payload["signature"] = signature
     else:
         payload["signature"] = "invalid_signature_mock"
