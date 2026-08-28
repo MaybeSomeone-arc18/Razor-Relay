@@ -166,13 +166,13 @@ export default function LandingPage() {
                 >
                   {activeCodeTab === 'curl' && (
                     <>
-<span className="text-pink-400 font-bold">curl</span> -X POST https://api.razor-relay.com/v1/relay/route \<br/>
+<span className="text-pink-400 font-bold">curl</span> -X POST https://api.razor-relay.com/v1/relay/gateway/execute \<br/>
 &nbsp;&nbsp;-H <span className="text-yellow-300 bg-yellow-400/10 px-1 rounded">"Authorization: Bearer agent_key"</span> \<br/>
 &nbsp;&nbsp;-H <span className="text-yellow-300">"Content-Type: application/json"</span> \<br/>
 &nbsp;&nbsp;-d <span className="text-[#00D290]">'{'{'}<br/>
 &nbsp;&nbsp;"mandate_id": "mnd_123",<br/>
 &nbsp;&nbsp;"requested_amount": 500,<br/>
-&nbsp;&nbsp;"schema": "service_rendered",<br/>
+&nbsp;&nbsp;"scope": "service_rendered",<br/>
 &nbsp;&nbsp;"signature": "hmac_sha256_hash"<br/>
 {'}'}'</span>
                     </>
@@ -183,12 +183,12 @@ export default function LandingPage() {
 payload = {'{'}<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">"mandate_id"</span>: <span className="text-[#00D290]">"mnd_123"</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">"requested_amount"</span>: <span className="text-purple-400">500</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">"schema"</span>: <span className="text-[#00D290]">"service_rendered"</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">"scope"</span>: <span className="text-[#00D290]">"service_rendered"</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">"signature"</span>: <span className="text-[#00D290]">"hmac_sha256_hash"</span><br/>
 {'}'}<br/>
 headers = {'{'}<span className="text-[#00D290]">"Authorization"</span>: <span className="text-yellow-300 bg-yellow-400/10 px-1 rounded">"Bearer agent_key"</span>{'}'}<br/><br/>
 res = requests.post(<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">"https://api.razor-relay.com/v1/relay/route"</span>, <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">"https://api.razor-relay.com/v1/relay/gateway/execute"</span>, <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;json=payload, headers=headers<br/>
 )<br/>
 <span className="text-blue-400 font-bold">print</span>(res.json())
@@ -199,8 +199,8 @@ res = requests.post(<br/>
 <span className="text-pink-400 font-bold">const</span> axios = <span className="text-blue-400 font-bold">require</span>(<span className="text-[#00D290]">'axios'</span>);<br/><br/>
 <span className="text-pink-400 font-bold">async function</span> <span className="text-blue-400 font-bold">dispatchPayload</span>() {'{'}<br/>
 &nbsp;&nbsp;<span className="text-pink-400 font-bold">const</span> res = <span className="text-pink-400 font-bold">await</span> axios.post(<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">'https://api.razor-relay.com/v1/relay/route'</span>, <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;{'{'} mandate_id: <span className="text-[#00D290]">'mnd_123'</span>, requested_amount: <span className="text-purple-400">500</span>, schema: <span className="text-[#00D290]">'service_rendered'</span>, signature: <span className="text-[#00D290]">'hmac_sha256_hash'</span> {'}'},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-[#00D290]">'https://api.razor-relay.com/v1/relay/gateway/execute'</span>, <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;{'{'} mandate_id: <span className="text-[#00D290]">'mnd_123'</span>, requested_amount: <span className="text-purple-400">500</span>, scope: <span className="text-[#00D290]">'service_rendered'</span>, signature: <span className="text-[#00D290]">'hmac_sha256_hash'</span> {'}'},<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;{'{'} headers: {'{'} Authorization: <span className="text-yellow-300 bg-yellow-400/10 px-1 rounded">`Bearer ${'{'}process.env.KEY{'}'}`</span> {'}'} {'}'}<br/>
 &nbsp;&nbsp;);<br/>
 &nbsp;&nbsp;<span className="text-blue-400 font-bold">console</span>.log(res.data);<br/>

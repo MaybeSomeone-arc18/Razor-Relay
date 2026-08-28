@@ -5,7 +5,7 @@ import time
 import json
 import logging
 from typing import Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Request, Depends, status
+from fastapi import FastAPI, HTTPException, Request, Depends, status, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
 from pydantic import BaseModel, Field, field_validator
@@ -17,7 +17,17 @@ from config.razorpay_config import razorpay_client
 load_dotenv()
 
 # --- Config & Setup ---
-MANDATE_SECRET_KEY = os.getenv("MANDATE_SECRET_KEY", "default_secret")
+import secrets
+ADMIN_KEY = os.getenv("ADMIN_KEY", "demo_admin_key")
+
+MANDATE_SECRET_KEY = os.getenv("MANDATE_SECRET_KEY")
+if not MANDATE_SECRET_KEY or MANDATE_SECRET_KEY == "default_secret":
+    MANDATE_SECRET_KEY = hashlib.sha256(ADMIN_KEY.encode()).hexdigest()
+
+def verify_admin_key(x_admin_key: str = Header(...)):
+    if x_admin_key != ADMIN_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 UPSTASH_URL = os.getenv("UPSTASH_REDIS_REST_URL")
 UPSTASH_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", "")
 
@@ -41,6 +51,8 @@ async def serve_dashboard():
 # --- Redis Protection Layer (Upstash REST & In-Memory Fallback) ---
 from database.redis_client import RedisStateStore
 redis_client = RedisStateStore(UPSTASH_URL, UPSTASH_TOKEN)
+if not UPSTASH_URL:
+    logger.warning("Starting in IN-MEMORY MOCK MODE. Resilience and global state disabled. NOT FOR PRODUCTION.")
 
 # --- State WAL (Write-Ahead Log) ---
 class WAL:
@@ -108,12 +120,13 @@ class EscrowSettleRequest(BaseModel):
 
 # --- Cryptographic Merkle Chain & HMAC Verification ---
 def generate_hmac_signature(payload_dict: dict, secret: str) -> str:
-    """Generates an HMAC-SHA256 signature for a payload dict."""
+    """Generates an HMAC-SHA256 signature using strict canonical strings."""
+    amount_int = int(payload_dict.get('requested_amount', 0))
+    canonical_payload = f"{payload_dict.get('mandate_id')}:{amount_int}:{payload_dict.get('nonce')}"
     crypto_seed = f"{payload_dict['delegation']['human_root_hash']}:{secret}".encode('utf-8')
-    payload_str = json.dumps(payload_dict, sort_keys=True, separators=(',', ':'))
     return hmac.new(
         crypto_seed,
-        payload_str.encode('utf-8'),
+        canonical_payload.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
 
@@ -129,11 +142,33 @@ class CircuitBreaker:
     STATE_HALF_OPEN = "HALF_OPEN" # 5% probe / 95% Smart Collect VPA
     STATE_OPEN = "OPEN"           # Halt
     
-    def __init__(self):
-        self.state = self.STATE_CLOSED
-        self.latency = 50.0
-        self.error_rate = 0.0
+    def __init__(self, redis_store):
+        self.redis = redis_store
         self.start_time = time.time()
+        
+    @property
+    def state(self):
+        return self.redis.get("circuit_breaker:state") or self.STATE_CLOSED
+        
+    @state.setter
+    def state(self, value):
+        self.redis.set("circuit_breaker:state", value)
+        
+    @property
+    def latency(self):
+        return float(self.redis.get("circuit_breaker:latency") or 50.0)
+        
+    @latency.setter
+    def latency(self, value):
+        self.redis.set("circuit_breaker:latency", str(value))
+        
+    @property
+    def error_rate(self):
+        return float(self.redis.get("circuit_breaker:error_rate") or 0.0)
+        
+    @error_rate.setter
+    def error_rate(self, value):
+        self.redis.set("circuit_breaker:error_rate", str(value))
         
     def update_telemetry(self, telemetry: SwitchTelemetry):
         self.latency = telemetry.latency_ms
@@ -145,16 +180,18 @@ class CircuitBreaker:
         h_bank = (1 - min(self.latency, 300) / 300) * (1 - self.error_rate)
         
         if h_bank < 0.5:
-            self.state = self.STATE_OPEN
+            new_state = self.STATE_OPEN
         elif h_bank < 0.8:
-            self.state = self.STATE_HALF_OPEN
+            new_state = self.STATE_HALF_OPEN
         else:
-            self.state = self.STATE_CLOSED
+            new_state = self.STATE_CLOSED
             
-        wal.append("CIRCUIT_BREAKER_TRANSITION", {"new_state": self.state, "h_bank": h_bank})
+        if self.state != new_state:
+            self.state = new_state
+            wal.append("CIRCUIT_BREAKER_TRANSITION", {"new_state": new_state, "h_bank": h_bank})
         logger.info(f"Switch Failover evaluated: H_bank={h_bank:.2f}, State={self.state}")
 
-breaker = CircuitBreaker()
+breaker = CircuitBreaker(redis_client)
 
 # --- Policy Guardrail Engine ---
 def execute_guardrails(payload: UAPMandatePayload):
@@ -162,42 +199,44 @@ def execute_guardrails(payload: UAPMandatePayload):
     if time.time() > payload.expiry:
         raise HTTPException(status_code=400, detail="MANDATE_EXPIRED")
         
-    # 2. Redis Protection Layer: Replay Protection (Nonce tracking via SETNX sliding locks)
-    nonce_key = f"nonce:{payload.nonce}"
-    if not redis_client.setnx_ex(nonce_key, "1", expire_seconds=86400):
-        raise HTTPException(status_code=409, detail="REPLAY_ATTACK_BLOCKED")
-        
-    # 3. Redis Protection Layer: Revocation Check
-    if redis_client.get(f"revoked:{payload.mandate_id}"):
-        raise HTTPException(status_code=403, detail="MANDATE_REVOKED")
-        
-    # 4. Per-transaction ceiling caps
-    if payload.requested_amount > payload.limits.per_transaction_cap:
-        raise HTTPException(status_code=400, detail="CEILING_BREACH")
-        
-    # 5. Price slippage
-    max_allowed_price = payload.quoted_price * (1 + (payload.limits.price_slippage_percent / 100))
-    if payload.requested_amount > max_allowed_price:
-        raise HTTPException(status_code=400, detail="PRICE_SLIPPAGE_DETECTED")
-        
-    # 6. 24-hour aggregate spend limits
-    daily_spend_key = f"spend:{payload.mandate_id}:{int(time.time() / 86400)}"
-    current_spend = float(redis_client.get(daily_spend_key) or 0.0)
-    
-    if current_spend + payload.requested_amount > payload.limits.daily_cap:
-        raise HTTPException(status_code=400, detail="AGGREGATE_CAP_BREACH")
-        
-    # 7. Cryptographic Verification
+    # 2. Cryptographic Verification (HMAC first so we don't exhaust nonces on bad sigs)
     if not verify_hmac_signature(payload, MANDATE_SECRET_KEY):
         logger.warning(f"HMAC mismatch for mandate {payload.mandate_id}. Enforcing failure.")
         redis_client.incrbyfloat("metrics:attacks_blocked", 1.0)
         wal.append("SECURITY_INTERVENTION", {"reason": "DELEGATION_CHAIN_INVALID", "mandate_id": payload.mandate_id})
         raise HTTPException(status_code=401, detail="DELEGATION_CHAIN_INVALID")
 
-    # Finalize guardrails: accumulate spend
-    redis_client.incrbyfloat(daily_spend_key, payload.requested_amount)
-    redis_client.incrbyfloat("metrics:gmv_processed", payload.requested_amount)
+    # 3. Redis Protection Layer: Replay Protection (Nonce tracking via SETNX sliding locks)
+    nonce_key = f"nonce:{payload.nonce}"
+    nonce_ttl = max(1, payload.expiry - int(time.time()))
+    if not redis_client.setnx_ex(nonce_key, "1", expire_seconds=nonce_ttl):
+        raise HTTPException(status_code=409, detail="REPLAY_ATTACK_BLOCKED")
+        
+    # 4. Redis Protection Layer: Revocation Check
+    if redis_client.get(f"revoked:{payload.mandate_id}"):
+        raise HTTPException(status_code=403, detail="MANDATE_REVOKED")
+        
+    # 5. Per-transaction ceiling caps
+    if payload.requested_amount > payload.limits.per_transaction_cap:
+        raise HTTPException(status_code=400, detail="CEILING_BREACH")
+        
+    # 6. Price slippage
+    max_allowed_price = payload.quoted_price * (1 + (payload.limits.price_slippage_percent / 100))
+    if payload.requested_amount > max_allowed_price:
+        raise HTTPException(status_code=400, detail="PRICE_SLIPPAGE_DETECTED")
+        
+    # 7. 24-hour aggregate spend limits - atomic check
+    daily_spend_key = f"spend:{payload.mandate_id}:{int(time.time() / 86400)}"
+    new_spend = redis_client.incrbyfloat(daily_spend_key, payload.requested_amount)
+    redis_client.expire(daily_spend_key, 172800)  # 48 hours TTL
+    if new_spend > payload.limits.daily_cap:
+        redis_client.incrbyfloat(daily_spend_key, -payload.requested_amount)
+        raise HTTPException(status_code=400, detail="AGGREGATE_CAP_BREACH")
+        
+    # Finalize guardrails: log WAL then update global metrics
     wal.append("MANDATE_AUTHORIZED", {"mandate_id": payload.mandate_id, "amount": payload.requested_amount})
+    redis_client.incrbyfloat("metrics:gmv_processed", payload.requested_amount)
+    
     return True
 
 # --- Endpoints ---
@@ -214,7 +253,7 @@ def health_check():
         "uptime_seconds": round(uptime, 2)
     }
 
-@app.get("/v1/relay/metrics")
+@app.get("/v1/relay/metrics", dependencies=[Depends(verify_admin_key)])
 def get_metrics():
     """Returns aggregated business metrics for the dashboard."""
     gmv = redis_client.get("metrics:gmv_processed") or 0.0
@@ -227,7 +266,7 @@ def get_metrics():
         "estimated_platform_revenue": float(gmv) * 0.01
     }
 
-@app.post("/v1/relay/mandate/sign")
+@app.post("/v1/relay/mandate/sign", dependencies=[Depends(verify_admin_key)])
 def sign_mandate(payload: dict):
     """Generates a valid HMAC-SHA256 signature for the given payload."""
     try:
@@ -236,13 +275,13 @@ def sign_mandate(payload: dict):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/v1/relay/chaos/inject")
+@app.post("/v1/relay/chaos/inject", dependencies=[Depends(verify_admin_key)])
 def inject_chaos(telemetry: SwitchTelemetry):
     """Chaos Ingestion Endpoint allowing live latency and error-rate overrides."""
     breaker.update_telemetry(telemetry)
     return {"status": "success", "circuit_state": breaker.state}
 
-@app.post("/v1/relay/mandate/revoke")
+@app.post("/v1/relay/mandate/revoke", dependencies=[Depends(verify_admin_key)])
 def revoke_mandate(mandate_id: str):
     """Instant Revocation Endpoint blocking mandate IDs."""
     redis_client.set(f"revoked:{mandate_id}", "1")
@@ -251,7 +290,7 @@ def revoke_mandate(mandate_id: str):
 
 from agents.verifier import ai_verify_task, VerificationDecision, detect_prompt_injection
 
-@app.post("/v1/relay/escrow/settle")
+@app.post("/v1/relay/escrow/settle", dependencies=[Depends(verify_admin_key)])
 def settle_escrow(req: EscrowSettleRequest):
     """Escrow Settlement with AI-routed deterministic verification.
     
@@ -259,7 +298,12 @@ def settle_escrow(req: EscrowSettleRequest):
     The verifier returns a binary pass/fail. Money never moves on AI "vibes".
     """
     lock_key = f"lock:settle:{req.mandate_id}"
-    if not redis_client.setnx_ex(lock_key, "1", expire_seconds=30):
+    settled_key = f"settled:{req.mandate_id}"
+    
+    if redis_client.get(settled_key):
+        raise HTTPException(status_code=409, detail="MANDATE_ALREADY_SETTLED")
+        
+    if not redis_client.setnx_ex(lock_key, "1", expire_seconds=120):
         wal.append("SECURITY_INTERVENTION", {
             "reason": "CONCURRENT_SETTLEMENT_BLOCKED",
             "mandate_id": req.mandate_id
@@ -286,14 +330,20 @@ def settle_escrow(req: EscrowSettleRequest):
         
         # 3. Binary settlement: passed → full payout, failed → full refund
         score = 1.0 if decision.passed else 0.0
-        total_amount = req.amount_in_escrow
         
-        # 1% platform fee (always collected — Razorpay's revenue)
-        platform_fee = total_amount * 0.01
-        remaining_pool = total_amount - platform_fee
+        # Currency normalization to paise/cents (integer arithmetic) to prevent floating point corruption
+        total_paise = int(req.amount_in_escrow * 100)
         
-        vendor_payout = remaining_pool * score
-        refund_amount = remaining_pool * (1 - score)
+        # 1% platform fee (only collected if verification passed)
+        platform_fee_paise = int(total_paise * 0.01) if decision.passed else 0
+        remaining_pool_paise = total_paise - platform_fee_paise
+        
+        vendor_payout_paise = int(remaining_pool_paise * score)
+        refund_amount_paise = int(remaining_pool_paise * (1 - score))
+        
+        platform_fee = platform_fee_paise / 100.0
+        vendor_payout = vendor_payout_paise / 100.0
+        refund_amount = refund_amount_paise / 100.0
         
         wal.append("ESCROW_SETTLEMENT", {
             "mandate_id": req.mandate_id,
@@ -305,6 +355,9 @@ def settle_escrow(req: EscrowSettleRequest):
             "refund_amount": refund_amount
         })
         
+        # Always mark mandate as settled to prevent infinite refund exploit
+        redis_client.set(settled_key, "1")
+            
         return {
             "status": "settled",
             "verification": decision.to_dict(),
@@ -315,7 +368,7 @@ def settle_escrow(req: EscrowSettleRequest):
             }
         }
     finally:
-        redis_client.delete(lock_key)
+        pass  # Lock expires via TTL (120s). Deleting it manually causes race conditions on slow LLM responses.
 
 @app.post("/v1/relay/gateway/execute")
 def gateway_execute(payload: UAPMandatePayload):
@@ -333,6 +386,7 @@ def gateway_execute(payload: UAPMandatePayload):
     execute_guardrails(payload)
     
     # Razorpay SDK Integration
+    start_req_time = time.time()
     try:
         if breaker.state == CircuitBreaker.STATE_CLOSED:
             if razorpay_client:
@@ -357,8 +411,22 @@ def gateway_execute(payload: UAPMandatePayload):
                 razorpay_payload = {"vpa_id": rzp_res.get("id")}
             else:
                 razorpay_payload = {"vpa_id": f"va_mock_{payload.nonce[:8]}"}
+                
+        # Track live success telemetry
+        latency_ms = (time.time() - start_req_time) * 1000
+        redis_client.incrbyfloat("circuit_breaker:total_live", 1.0)
     except Exception as e:
         logger.error(f"Razorpay API Error: {e}")
+        
+        # Live error telemetry feedback loop
+        err_count = redis_client.incrbyfloat("circuit_breaker:errors_live", 1.0)
+        total_count = redis_client.incrbyfloat("circuit_breaker:total_live", 1.0)
+        if total_count >= 5:
+            breaker.update_telemetry(SwitchTelemetry(
+                latency_ms=100.0,
+                rolling_error_rate=(err_count / total_count)
+            ))
+            
         # Graceful fallback to mock to ensure zero-trust pipeline doesn't crash on network timeouts
         if breaker.state == CircuitBreaker.STATE_CLOSED:
             razorpay_payload = {"order_id": f"order_mock_err_{payload.nonce[:8]}"}

@@ -57,9 +57,10 @@ def generate_valid_payload(
     }
     
     if sign:
-        payload_str = json.dumps(payload, sort_keys=True, separators=(',', ':'))
+        amount_int = int(payload.get('requested_amount', 0))
+        canonical_payload = f"{payload.get('mandate_id')}:{amount_int}:{payload.get('nonce')}"
         crypto_seed = f"hash_abcd:{MANDATE_SECRET_KEY}".encode('utf-8')
-        signature = hmac.new(crypto_seed, payload_str.encode('utf-8'), hashlib.sha256).hexdigest()
+        signature = hmac.new(crypto_seed, canonical_payload.encode('utf-8'), hashlib.sha256).hexdigest()
         payload["signature"] = signature
     else:
         payload["signature"] = "invalid_signature_mock"
@@ -115,7 +116,7 @@ def test_scenario_3_replay_attack():
 
 def test_scenario_4_instant_human_revocation():
     """Scenario 4: Instant human revocation -> Returns 403 Forbidden (MANDATE_REVOKED)."""
-    client.post("/v1/relay/mandate/revoke", params={"mandate_id": "mandate_revoked_test"})
+    client.post("/v1/relay/mandate/revoke", params={"mandate_id": "mandate_revoked_test"}, headers={"X-Admin-Key": "demo_admin_key"})
     payload = generate_valid_payload(mandate_id="mandate_revoked_test")
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 403
@@ -160,7 +161,7 @@ def test_scenario_9_delegation_depth():
 
 def test_scenario_10_chaos_open():
     """Scenario 10: Chaos injection triggering OPEN circuit state -> Returns 200, OPEN state, CIRCUIT_BREAKER_HALT."""
-    chaos_res = client.post("/v1/relay/chaos/inject", json={"latency_ms": 300, "rolling_error_rate": 0.8})
+    chaos_res = client.post("/v1/relay/chaos/inject", json={"latency_ms": 300, "rolling_error_rate": 0.8}, headers={"X-Admin-Key": "demo_admin_key"})
     assert chaos_res.status_code == 200
     assert chaos_res.json()["circuit_state"] == "OPEN"
     
@@ -171,7 +172,7 @@ def test_scenario_10_chaos_open():
 
 def test_scenario_11_chaos_half_open():
     """Scenario 11: Switch health in HALF_OPEN range -> Triggers token-bucket failover routing."""
-    client.post("/v1/relay/chaos/inject", json={"latency_ms": 100.0, "rolling_error_rate": 0.0})
+    client.post("/v1/relay/chaos/inject", json={"latency_ms": 100.0, "rolling_error_rate": 0.0}, headers={"X-Admin-Key": "demo_admin_key"})
     
     payload = generate_valid_payload()
     response = client.post("/v1/relay/gateway/execute", json=payload)
@@ -199,7 +200,7 @@ def test_scenario_12_escrow_full_payout_via_hash():
         },
         "amount_in_escrow": 100.0
     }
-    response = client.post("/v1/relay/escrow/settle", json=req)
+    response = client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     assert response.status_code == 200
     data = response.json()
     assert data["verification"]["passed"] is True
@@ -222,13 +223,13 @@ def test_scenario_13_escrow_hash_mismatch_refund():
         },
         "amount_in_escrow": 100.0
     }
-    response = client.post("/v1/relay/escrow/settle", json=req)
+    response = client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     assert response.status_code == 200
     data = response.json()
     assert data["verification"]["passed"] is False
-    assert data["settlement_breakdown"]["platform_fee"] == 1.0
+    assert data["settlement_breakdown"]["platform_fee"] == 0.0
     assert data["settlement_breakdown"]["vendor_payout"] == 0.0
-    assert data["settlement_breakdown"]["refund_amount"] == 99.0
+    assert data["settlement_breakdown"]["refund_amount"] == 100.0
 
 def test_scenario_14_escrow_webhook_valid():
     """Scenario 14: service_rendered schema, valid webhook timestamp -> full payout."""
@@ -243,7 +244,7 @@ def test_scenario_14_escrow_webhook_valid():
         },
         "amount_in_escrow": 100.0
     }
-    response = client.post("/v1/relay/escrow/settle", json=req)
+    response = client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     assert response.status_code == 200
     data = response.json()
     assert data["verification"]["passed"] is True
@@ -252,7 +253,7 @@ def test_scenario_14_escrow_webhook_valid():
 
 def test_scenario_15_wal_version_increments():
     """Scenario 15: State Write-Ahead Log version increments - Revoke generates log entry."""
-    client.post("/v1/relay/mandate/revoke", params={"mandate_id": "wal_test_15"})
+    client.post("/v1/relay/mandate/revoke", params={"mandate_id": "wal_test_15"}, headers={"X-Admin-Key": "demo_admin_key"})
     lines = redis_client._call("LRANGE", "wal_wal_test_15", 0, -1)
     assert len(lines) > 0
     last_log = json.loads(lines[-1])
@@ -281,7 +282,7 @@ def test_scenario_17_wal_escrow_settle():
         },
         "amount_in_escrow": 100.0
     }
-    client.post("/v1/relay/escrow/settle", json=req)
+    client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     lines = redis_client._call("LRANGE", "wal_wal_test_17", 0, -1)
     last_log = json.loads(lines[-1])
     assert last_log["action"] == "ESCROW_SETTLEMENT"
@@ -302,7 +303,7 @@ def test_scenario_19_edge_case_slippage_within_tolerance():
 
 def test_scenario_20_wal_circuit_breaker_transitions():
     """Scenario 20: WAL records circuit breaker state transitions."""
-    client.post("/v1/relay/chaos/inject", json={"latency_ms": 400.0, "rolling_error_rate": 0.8})
+    client.post("/v1/relay/chaos/inject", json={"latency_ms": 400.0, "rolling_error_rate": 0.8}, headers={"X-Admin-Key": "demo_admin_key"})
     lines = redis_client._call("LRANGE", "wal_system", 0, -1)
     last_log = json.loads(lines[-1])
     assert last_log["action"] == "CIRCUIT_BREAKER_TRANSITION"
@@ -323,7 +324,7 @@ def test_scenario_21_prompt_injection_blocked():
         },
         "amount_in_escrow": 10000.0
     }
-    response = client.post("/v1/relay/escrow/settle", json=req)
+    response = client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     assert response.status_code == 403
     assert response.json()["detail"] == "PROMPT_INJECTION_BLOCKED"
     
@@ -344,7 +345,7 @@ def test_scenario_22_prompt_injection_in_scope():
         },
         "amount_in_escrow": 5000.0
     }
-    response = client.post("/v1/relay/escrow/settle", json=req)
+    response = client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     assert response.status_code == 403
     assert response.json()["detail"] == "PROMPT_INJECTION_BLOCKED"
 
@@ -361,7 +362,7 @@ def test_scenario_23_payment_confirmed_mock_valid():
         },
         "amount_in_escrow": 500.0
     }
-    response = client.post("/v1/relay/escrow/settle", json=req)
+    response = client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     assert response.status_code == 200
     data = response.json()
     assert data["verification"]["schema_used"] == "payment_confirmed"
@@ -380,9 +381,9 @@ def test_scenario_24_webhook_expired():
         },
         "amount_in_escrow": 200.0
     }
-    response = client.post("/v1/relay/escrow/settle", json=req)
+    response = client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     assert response.status_code == 200
     data = response.json()
     assert data["verification"]["passed"] is False
     assert data["settlement_breakdown"]["vendor_payout"] == 0.0
-    assert data["settlement_breakdown"]["refund_amount"] == 198.0
+    assert data["settlement_breakdown"]["refund_amount"] == 200.0

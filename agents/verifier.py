@@ -319,7 +319,16 @@ def ai_verify_task(scope: str, proof_of_work: str, proof_artifacts: dict = None)
     proof_artifacts = proof_artifacts or {}
 
     # STEP 1: Prompt injection defense
-    if detect_prompt_injection(proof_of_work) or detect_prompt_injection(scope):
+    def _scan_for_injection(obj) -> bool:
+        if isinstance(obj, str):
+            return detect_prompt_injection(obj)
+        elif isinstance(obj, dict):
+            return any(_scan_for_injection(v) for v in obj.values())
+        elif isinstance(obj, list):
+            return any(_scan_for_injection(v) for v in obj)
+        return False
+
+    if detect_prompt_injection(proof_of_work) or detect_prompt_injection(scope) or _scan_for_injection(proof_artifacts):
         logger.warning(f"PROMPT_INJECTION_BLOCKED: scope='{scope[:50]}' proof='{proof_of_work[:50]}'")
         return VerificationDecision(
             schema_used="INJECTION_BLOCKED",

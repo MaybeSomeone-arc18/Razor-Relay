@@ -79,7 +79,7 @@ def _settle(mandate_id, scope, proof_text, artifacts, amount=100.0):
         },
         "amount_in_escrow": amount
     }
-    res = client.post("/v1/relay/escrow/settle", json=req)
+    res = client.post("/v1/relay/escrow/settle", json=req, headers={"X-Admin-Key": "demo_admin_key"})
     return res.status_code, res.json()
 
 
@@ -144,7 +144,7 @@ class TestDataDelivery:
         code, data = _settle("dd_08", "data_delivery", "file delivered", {"artifact_hash": h, "expected_hash": h}, amount=999999.99)
         sb = data["settlement_breakdown"]
         _track("data_delivery", "dd_08_large_amount", True, sb["vendor_payout"] > 0, f"Payout: {sb['vendor_payout']}")
-        assert sb["vendor_payout"] == 989999.99
+        assert sb["vendor_payout"] == 990000.0
 
     def test_dd_09_zero_amount(self):
         h = self._hash(b"free_job")
