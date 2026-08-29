@@ -17,8 +17,32 @@ import {
 } from "@/components/ui/command";
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState("telemetry");
+  const [activeTab, setActiveTab] = useState<'telemetry' | 'logs' | 'policies' | 'keys' | 'profile' | 'settings'>('telemetry');
   const [open, setOpen] = useState(false);
+  const [isMac, setIsMac] = useState(true);
+  const [apiKey, setApiKey] = useState('rzp_live_super_secret_key_12345');
+
+  const generateApiKey = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const randomKey = Array.from({ length: 24 }).map(() => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+    setApiKey(`rzp_live_${randomKey}`);
+    setActiveTab('keys');
+    setOpen(false);
+  };
+
+  const exportLogsCSV = () => {
+    const csvContent = "data:text/csv;charset=utf-8,TIMESTAMP,MANDATE ID,AGENT IP,STATUS,FEE\nJust now,mnd_9f82b,192.168.1.104,SETTLED,5.00\n2s ago,mnd_4a11c,10.0.0.45,AUTHORIZED,12.00\n";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "escrow_logs.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setActiveTab('logs');
+    setOpen(false);
+  };
+
   const [activeRequests, setActiveRequests] = useState(142);
   const [volume, setVolume] = useState(12500);
   const [theme, setTheme] = useState("dark");
@@ -61,10 +85,12 @@ export default function DashboardPage() {
 
   // Command Palette listener
   useEffect(() => {
+    setIsMac(typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0);
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        if (e.repeat) return;
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen(true);
       }
     };
     document.addEventListener("keydown", down);
@@ -120,8 +146,8 @@ export default function DashboardPage() {
           >
             <Search className="w-4 h-4" />
             <span>Search...</span>
-            <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 rounded bg-neutral-800 font-mono text-[10px]">
-              <span className="text-xs">⌘</span>K
+            <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 rounded bg-slate-200 dark:bg-neutral-800 text-slate-500 dark:text-slate-400 font-mono text-[10px]">
+              {isMac ? <><span className="text-xs">⌘</span>K</> : <><span className="text-xs">Ctrl</span> + K</>}
             </kbd>
           </button>
           
@@ -296,7 +322,7 @@ export default function DashboardPage() {
                     <input type="text" placeholder="Search mandates..." className="bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 text-xs rounded-md pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#00FF88] text-slate-900 dark:text-white w-full sm:w-64" />
                   </div>
                 </div>
-                <button className="text-xs font-mono bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 px-3 py-1.5 rounded text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white transition-colors">
+                <button onClick={exportLogsCSV} className="text-xs font-mono bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 px-3 py-1.5 rounded text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white transition-colors">
                   EXPORT CSV
                 </button>
               </div>
@@ -402,7 +428,7 @@ export default function DashboardPage() {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <input 
                       type="password" 
-                      value="rzp_live_super_secret_key_12345" 
+                      value={apiKey} 
                       disabled
                       className="flex-1 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white font-mono text-sm opacity-50"
                     />
@@ -416,9 +442,52 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="pt-6 border-t border-slate-200 dark:border-blue-500/20/50">
-                  <button className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-sm font-medium transition-colors">
+                  <button onClick={generateApiKey} className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-sm font-medium transition-colors">
                     Rotate Keys
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-8 shadow-lg max-w-2xl">
+              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-6">User Profile</h2>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Name</label>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">Admin User</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Email</label>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">admin@razor-relay.com</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Role</label>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 px-3 py-1 rounded-full inline-block">Super Administrator</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-8 shadow-lg max-w-2xl">
+              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-6">System Configuration</h2>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Environment</label>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">Production (Live)</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Webhook URL</label>
+                  <input type="text" defaultValue="https://api.razor-relay.com/webhook" className="w-full bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500/60" />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Failover Threshold</label>
+                  <div className="flex items-center gap-2">
+                    <input type="number" defaultValue={5} className="w-24 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500/60" />
+                    <span className="text-sm text-slate-500">%</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -433,14 +502,14 @@ export default function DashboardPage() {
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Quick Actions">
-            <CommandItem><Activity className="mr-2 h-4 w-4" /> View Live Telemetry</CommandItem>
-            <CommandItem><FileText className="mr-2 h-4 w-4" /> Export Escrow Logs</CommandItem>
-            <CommandItem><Code2 className="mr-2 h-4 w-4" /> Generate API Key</CommandItem>
+            <CommandItem onSelect={() => { setActiveTab('telemetry'); setOpen(false); }}><Activity className="mr-2 h-4 w-4" /> View Live Telemetry</CommandItem>
+            <CommandItem onSelect={exportLogsCSV}><FileText className="mr-2 h-4 w-4" /> Export Escrow Logs</CommandItem>
+            <CommandItem onSelect={generateApiKey}><Code2 className="mr-2 h-4 w-4" /> Generate API Key</CommandItem>
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Settings">
-            <CommandItem><User className="mr-2 h-4 w-4" /> Profile</CommandItem>
-            <CommandItem><Settings className="mr-2 h-4 w-4" /> System Configuration</CommandItem>
+            <CommandItem onSelect={() => { setActiveTab('profile'); setOpen(false); }}><User className="mr-2 h-4 w-4" /> Profile</CommandItem>
+            <CommandItem onSelect={() => { setActiveTab('settings'); setOpen(false); }}><Settings className="mr-2 h-4 w-4" /> System Configuration</CommandItem>
           </CommandGroup>
         </CommandList>
       </CommandDialog>
