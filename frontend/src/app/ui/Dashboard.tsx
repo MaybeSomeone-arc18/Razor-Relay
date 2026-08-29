@@ -43,6 +43,15 @@ export default function DashboardPage() {
     setOpen(false);
   };
 
+  const [webhookStatus, setWebhookStatus] = useState<string | null>(null);
+  const testWebhook = () => {
+    setWebhookStatus("Testing connection...");
+    setTimeout(() => {
+      setWebhookStatus("200 OK - Test payload delivered successfully.");
+      setTimeout(() => setWebhookStatus(null), 3000);
+    }, 800);
+  };
+
   const [activeRequests, setActiveRequests] = useState(142);
   const [volume, setVolume] = useState(12500);
   const [theme, setTheme] = useState("dark");
@@ -203,6 +212,20 @@ export default function DashboardPage() {
             >
               <Code2 className={`w-4 h-4 ${activeTab === 'keys' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
               API Keys
+            </button>
+            <button 
+              onClick={() => setActiveTab('profile')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'profile' ? 'bg-slate-100 dark:bg-[#0F172A] text-slate-900 dark:text-white font-medium border border-slate-200 dark:border-blue-500/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-100/50 dark:bg-[#0F172A]/50'}`}
+            >
+              <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
+              Profile
+            </button>
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-slate-100 dark:bg-[#0F172A] text-slate-900 dark:text-white font-medium border border-slate-200 dark:border-blue-500/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-100/50 dark:bg-[#0F172A]/50'}`}
+            >
+              <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
+              System Config
             </button>
           </div>
         </aside>
@@ -480,7 +503,17 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Webhook URL</label>
-                  <input type="text" defaultValue="https://api.razor-relay.com/webhook" className="w-full bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500/60" />
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input type="text" defaultValue="https://api.razor-relay.com/webhook" className="flex-1 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500/60" />
+                    <button onClick={testWebhook} className="px-4 py-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                      Test Link
+                    </button>
+                  </div>
+                  {webhookStatus && (
+                    <p className={`text-xs mt-2 font-mono ${webhookStatus.includes('200') ? 'text-emerald-500 dark:text-[#00FF88]' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {webhookStatus}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Failover Threshold</label>
