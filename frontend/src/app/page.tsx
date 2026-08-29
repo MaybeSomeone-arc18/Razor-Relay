@@ -77,7 +77,7 @@ export default function LandingPage() {
           <button onClick={toggleTheme} className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'}`}>
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          <a href="/docs" className={`hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-md font-bold transition-colors ${theme === 'dark' ? 'bg-slate-800/50 text-slate-300 hover:bg-slate-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+          <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noopener noreferrer" className={`hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-md font-bold transition-colors ${theme === 'dark' ? 'bg-slate-800/50 text-slate-300 hover:bg-slate-800' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
             <Terminal className="w-4 h-4" /> Swagger API
           </a>
           <a href="/ui" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_25px_rgba(37,99,235,0.6)] transition-all flex items-center gap-2">

@@ -41,11 +41,23 @@ UPSTASH_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", "")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("razor-relay")
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="Razor-Relay Zero-Trust Gateway")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 os.makedirs("static", exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+if os.path.exists("static/_next"):
+    app.mount("/_next", StaticFiles(directory="static/_next"), name="next_assets")
 
 @app.get("/", response_class=FileResponse)
 async def serve_landing():

@@ -497,6 +497,18 @@ res = requests.post(
       setTheme(currentTheme === 'dark' ? 'light' : 'dark');
     });
 
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'razorpay_theme') {
+        const newTheme = e.newValue || 'dark';
+        if (newTheme === 'dark') {
+          htmlElement.classList.add('dark');
+        } else {
+          htmlElement.classList.remove('dark');
+        }
+        updateIcons(newTheme);
+      }
+    });
+
     // 2. Rotating Hero Headline
     const headlines = document.querySelectorAll('.hero-headline');
     let currentHeadline = 0;
