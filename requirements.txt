@@ -7,3 +7,4 @@ razorpay
 python-dotenv
 httpx
 google-genai
+cryptography

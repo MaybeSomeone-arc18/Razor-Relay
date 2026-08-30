@@ -123,7 +123,7 @@ def seed_from_csv(csv_path: str, max_rows: int = 500):
 
             # Map fraud label to Razor-Relay lifecycle status
             if is_fraud:
-                status = random.choice(["SIGNATURE_INVALID", "REPLAY_BLOCKED", "MANDATE_REVOKED"])
+                status = random.choice(["SIGNATURE_INVALID", "REPLAY_BLOCKED", "MANDATE_REVOKED", "ANOMALY_DETECTED", "REJECTED_CAP", "REJECTED_CEILING", "FRAUD_VELOCITY_BLOCKED"])
             else:
                 status = random.choices(
                     ["SETTLED", "ESCROW_LOCKED", "REFUNDED", "REJECTED_CEILING"],

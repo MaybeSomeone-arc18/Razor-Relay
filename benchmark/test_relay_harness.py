@@ -18,11 +18,22 @@ from fastapi.testclient import TestClient
 # Add parent directory to path to import main
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from main import app, MANDATE_SECRET_KEY, redis_client, wal, breaker, CircuitBreaker
+from main import app, redis_client, wal, breaker, CircuitBreaker, get_canonical_payload
 from database.sqlite_client import init_db
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
 
 # Initialize database schema before tests since TestClient without 'with' block bypasses FastAPI startup events
 init_db()
+
+def create_agent():
+    priv = ed25519.Ed25519PrivateKey.generate()
+    pub = priv.public_key()
+    pub_hex = pub.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw
+    ).hex()
+    return {"priv": priv, "pub": pub_hex}
 
 client = TestClient(app)
 
@@ -36,9 +47,20 @@ def generate_valid_payload(
     per_transaction_cap=500.0,
     daily_cap=1000.0,
     slippage=0.0,
-    depth=1
+    depth=1,
+    agent_keys=None
 ):
     nonce = nonce or str(uuid.uuid4())
+    
+    if agent_keys is None:
+        agent_keys = create_agent()
+        
+    client.post("/v1/relay/agent/register", json={
+        "agent_pubkey": agent_keys["pub"],
+        "per_transaction_cap": per_transaction_cap,
+        "daily_cap": daily_cap,
+        "price_slippage_percent": slippage
+    }, headers={"X-Admin-Key": "demo_admin_key"})
     
     payload = {
         "mandate_id": mandate_id,
@@ -46,12 +68,8 @@ def generate_valid_payload(
             "human_root_hash": "hash_abcd",
             "primary_agent_id": "agent_01",
             "sub_agent_id": None,
-            "delegation_depth": depth
-        },
-        "limits": {
-            "per_transaction_cap": per_transaction_cap,
-            "daily_cap": daily_cap,
-            "price_slippage_percent": slippage
+            "delegation_depth": depth,
+            "agent_pubkey": agent_keys["pub"]
         },
         "scope": "test_purchase",
         "expiry": int(time.time()) + expiry_offset,
@@ -61,15 +79,14 @@ def generate_valid_payload(
     }
     
     if sign:
-        root_hash = payload.get("delegation", {}).get("human_root_hash", "")
-        formatted_amount = f"{float(requested_amount):.2f}"
-        message = f"{payload['mandate_id']}:{root_hash}:{nonce}:{formatted_amount}".encode('utf-8')
-        signature = hmac.new(MANDATE_SECRET_KEY.encode('utf-8'), message, hashlib.sha256).hexdigest()
-        payload["signature"] = signature
-    else:
-        payload["signature"] = "invalid_signature_mock"
-        
-    return payload
+        if isinstance(sign, str):
+            payload["signature"] = sign
+        else:
+            canonical_msg = get_canonical_payload(payload)
+            signature = agent_keys["priv"].sign(canonical_msg)
+            payload["signature"] = signature.hex()
+            
+    return payload, agent_keys
 
 @pytest.fixture(autouse=True)
 def setup_and_teardown():
@@ -94,7 +111,7 @@ def setup_and_teardown():
 
 def test_scenario_1_valid_mandate():
     """Scenario 1: Valid mandate payload on healthy switch -> Returns 200, CLOSED state, UPI_DIRECT_AUTOPAY."""
-    payload = generate_valid_payload()
+    payload, agent_keys = generate_valid_payload()
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 200
     data = response.json()
@@ -103,14 +120,14 @@ def test_scenario_1_valid_mandate():
 
 def test_scenario_2_price_slippage():
     """Scenario 2: Post-authorization price slippage -> Returns 400 Bad Request (PRICE_SLIPPAGE_DETECTED)."""
-    payload = generate_valid_payload(requested_amount=110.0, quoted_price=100.0, slippage=0.0)
+    payload, agent_keys = generate_valid_payload(requested_amount=110.0, quoted_price=100.0, slippage=0.0)
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 400
     assert response.json()["detail"] == "PRICE_SLIPPAGE_DETECTED"
     
 def test_scenario_3_replay_attack():
     """Scenario 3: Replay attack (duplicate nonce) -> Returns 409 Conflict (REPLAY_ATTACK_BLOCKED)."""
-    payload = generate_valid_payload(nonce="duplicate_nonce_123")
+    payload, agent_keys = generate_valid_payload(nonce="duplicate_nonce_123")
     r1 = client.post("/v1/relay/gateway/execute", json=payload)
     assert r1.status_code == 200
     
@@ -121,45 +138,46 @@ def test_scenario_3_replay_attack():
 def test_scenario_4_instant_human_revocation():
     """Scenario 4: Instant human revocation -> Returns 403 Forbidden (MANDATE_REVOKED)."""
     client.post("/v1/relay/mandate/revoke", params={"mandate_id": "mandate_revoked_test"}, headers={"X-Admin-Key": "demo_admin_key"})
-    payload = generate_valid_payload(mandate_id="mandate_revoked_test")
+    payload, agent_keys = generate_valid_payload(mandate_id="mandate_revoked_test")
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 403
     assert response.json()["detail"] == "MANDATE_REVOKED"
 
 def test_scenario_5_ceiling_breach():
     """Scenario 5: Per-transaction ceiling breach -> Returns 400 Bad Request (CEILING_BREACH)."""
-    payload = generate_valid_payload(requested_amount=1000.0, per_transaction_cap=500.0)
+    payload, agent_keys = generate_valid_payload(requested_amount=1000.0, per_transaction_cap=500.0, daily_cap=5000.0)
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 400
     assert response.json()["detail"] == "CEILING_BREACH"
 
 def test_scenario_6_aggregate_cap_breach():
     """Scenario 6: 24-hour aggregate spend cap breach -> Returns 400 Bad Request (AGGREGATE_CAP_BREACH)."""
-    payload1 = generate_valid_payload(mandate_id="daily_test", requested_amount=300.0, quoted_price=300.0, daily_cap=500.0)
+    payload1, agent_keys = generate_valid_payload(mandate_id="daily_test", requested_amount=300.0, quoted_price=300.0, daily_cap=500.0)
     client.post("/v1/relay/gateway/execute", json=payload1)
     
-    payload2 = generate_valid_payload(mandate_id="daily_test", requested_amount=300.0, quoted_price=300.0, daily_cap=500.0)
+    payload2, _ = generate_valid_payload(mandate_id="daily_test", requested_amount=300.0, quoted_price=300.0, daily_cap=500.0, agent_keys=agent_keys)
     response = client.post("/v1/relay/gateway/execute", json=payload2)
     assert response.status_code == 400
     assert response.json()["detail"] == "AGGREGATE_CAP_BREACH"
 
 def test_scenario_7_expired_mandate():
     """Scenario 7: Expired mandate timestamp -> Returns 400 Bad Request (MANDATE_EXPIRED)."""
-    payload = generate_valid_payload(expiry_offset=-3600)
+    payload, agent_keys = generate_valid_payload(expiry_offset=-3600)
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 400
     assert response.json()["detail"] == "MANDATE_EXPIRED"
 
 def test_scenario_8_invalid_signature():
     """Scenario 8: Invalid Merkle chain signature -> Returns 401 Unauthorized (DELEGATION_CHAIN_INVALID)."""
-    payload = generate_valid_payload(sign=False)
+    invalid_hex = "0" * 128
+    payload, agent_keys = generate_valid_payload(sign=invalid_hex)
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 401
     assert response.json()["detail"] == "DELEGATION_CHAIN_INVALID"
 
 def test_scenario_9_delegation_depth():
     """Scenario 9: Delegation depth exceeding cap (>2) -> Fails validation."""
-    payload = generate_valid_payload(depth=3)
+    payload, agent_keys = generate_valid_payload(depth=3)
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 422 
 
@@ -169,7 +187,7 @@ def test_scenario_10_chaos_open():
     assert chaos_res.status_code == 200
     assert chaos_res.json()["circuit_state"] == "OPEN"
     
-    payload = generate_valid_payload()
+    payload, agent_keys = generate_valid_payload()
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 503
     assert response.json()["detail"] == "CIRCUIT_BREAKER_HALT"
@@ -178,7 +196,7 @@ def test_scenario_11_chaos_half_open():
     """Scenario 11: Switch health in HALF_OPEN range -> Triggers token-bucket failover routing."""
     client.post("/v1/relay/chaos/inject", json={"latency_ms": 100.0, "rolling_error_rate": 0.0}, headers={"X-Admin-Key": "demo_admin_key"})
     
-    payload = generate_valid_payload()
+    payload, agent_keys = generate_valid_payload()
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 200
     data = response.json()
@@ -266,7 +284,7 @@ def test_scenario_15_wal_version_increments():
 
 def test_scenario_16_wal_audit_digest_execute():
     """Scenario 16: State Write-Ahead Log audit digest verification - Execution logs."""
-    payload = generate_valid_payload(mandate_id="wal_test_16", requested_amount=42.0)
+    payload, agent_keys = generate_valid_payload(mandate_id="wal_test_16", requested_amount=42.0)
     client.post("/v1/relay/gateway/execute", json=payload)
     lines = redis_client._call("LRANGE", "wal_wal_test_16", 0, -1)
     last_log = json.loads(lines[-1])
@@ -295,13 +313,13 @@ def test_scenario_17_wal_escrow_settle():
 
 def test_scenario_18_edge_case_zero_amount():
     """Scenario 18: Edge case - Zero amount request should process successfully if valid."""
-    payload = generate_valid_payload(requested_amount=0.0, quoted_price=0.0)
+    payload, agent_keys = generate_valid_payload(requested_amount=0.0, quoted_price=0.0)
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 200
 
 def test_scenario_19_edge_case_slippage_within_tolerance():
     """Scenario 19: Edge case - Price slippage within tolerance passes."""
-    payload = generate_valid_payload(requested_amount=105.0, quoted_price=100.0, slippage=5.0)
+    payload, agent_keys = generate_valid_payload(requested_amount=105.0, quoted_price=100.0, slippage=5.0)
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 200
 

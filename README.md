@@ -4,7 +4,7 @@ I built Razor-Relay because I realized a massive flaw in the future of AI. We ar
 
 Agents hallucinate. They get prompt-injected. They cannot be legally held accountable for draining your bank account.
 
-I wanted to build a system where we do not trust the AI. We trust the math. Razor-Relay is a zero-trust cryptographic gateway that sits between your AI agents and the Razorpay network, ensuring that your agents can only spend exactly what you mathematically allow them to.
+I wanted to build a system where we do not trust the AI. We trust the math. Razor-Relay is a zero-trust cryptographic gateway that sits between your AI agents and the Razorpay network, ensuring that your agents can only spend exactly what you mathematically allow them to. All financial caps and velocity rules are strictly enforced server-side by the human operator, eliminating the risk of client-side override by hallucinating agents.
 
 ---
 
@@ -13,9 +13,9 @@ I wanted to build a system where we do not trust the AI. We trust the math. Razo
 The business model of Razor-Relay is incredibly straightforward and built to scale infinitely alongside the growth of agent-to-agent commerce.
 
 1. **The Negotiation:** An AI Agent decides it needs to buy a service (for example, purchasing API credits or cloud storage).
-2. **The Cryptographic Mandate:** The Agent creates a "Mandate" (a request to spend money) and signs it using an HMAC-SHA256 signature.
-3. **The Interception:** Razor-Relay intercepts this mandate before it hits Razorpay. It checks your hardcoded financial limits (e.g., "This agent cannot spend more than 10,000 INR per transaction" or "This agent cannot exceed 50,000 INR per day").
-4. **The Escrow:** If the math checks out, Razor-Relay authorizes the transaction via Razorpay and locks the funds in escrow.
+2. **The Cryptographic Mandate:** The Agent creates a "Mandate" (a request to spend money) and signs a strictly canonicalized JSON payload using its deterministic Ed25519 asymmetric private key.
+3. **The Interception:** Razor-Relay intercepts this mandate before it hits Razorpay. It verifies the signature against the agent's pre-registered public key, then looks up the agent's hardcoded financial limits on the server (e.g., "This agent cannot spend more than 10,000 INR per transaction", "Cannot exceed 50,000 INR per day", or "Cannot exceed 15 requests per minute").
+4. **The Escrow Simulation:** If the math checks out, Razor-Relay authorizes the transaction. While labeled "Escrow" in the UI for clarity, this simulates a Razorpay Route / Nodal Account hold where funds are ring-fenced for the agent.
 5. **The Revenue:** When the service is delivered and funds are settled to the vendor, Razor-Relay takes a **1% platform fee** for securing the transaction. 
 
 As AI agents begin executing millions of micro-transactions per second, this 1% fee generates a highly scalable, passive revenue stream for the platform.
@@ -30,13 +30,13 @@ To prove this works under pressure, I integrated a Live Replay Engine that strea
 graph TD
     A[Rogue AI Agent / Live Replay Engine] -->|1. Submit Payload| B[God Mode Terminal / API]
     B -->|2. Forward Mandate| C[Razor-Relay Core Gateway]
-    C -->|3. Cryptographic Check| D{Valid Signature?}
+    C -->|3. Ed25519 Verification| D{Valid Signature?}
     D -->|No| E[401 Unauthorized / Drop Traffic]
-    D -->|Yes| F{Check Financial Ceilings}
-    F -->|Exceeds Limit| G[400 Ceiling Breach / Log Anomaly]
-    F -->|Within Limit| H{Circuit Breaker Status}
-    H -->|Error Rate Exceeds 5%| I[Route to Razorpay Smart Collect VPA for Human Review]
-    H -->|Healthy| J[Lock Funds in Escrow / Razorpay Orders API]
+    D -->|Yes| F{Check Server-Side Limits & Velocity}
+    F -->|Exceeds Limits| G[400/429 Cap or Velocity Breach]
+    F -->|Within Limits| H{Circuit Breaker Status}
+    H -->|H_Bank < 0.8| I[Route to Razorpay Smart Collect VPA for Human Review]
+    H -->|Healthy| J[Simulate Escrow Hold / Razorpay Orders API]
     J -->|4. Fast Database Write| K[SQLite WAL Database]
     K -->|5. Real-Time UI Sync| L[Live Dashboard Telemetry]
 ```
@@ -57,7 +57,7 @@ I built a "Manual Override" terminal directly into the dashboard. You can act as
 Because the dashboard polls the database 10 times a second for live logs, and the Replay Engine writes to it simultaneously, standard databases would lock and crash. I overhauled the database layer to use SQLite WAL (Write-Ahead Logging) mode, allowing infinite concurrent reads and writes with zero latency.
 
 ### Dynamic Circuit Breaker Failover
-If an agent starts hallucinating and its transaction failure rate exceeds a dynamic 5% threshold, the system stops trusting it. Instead of hard-failing and losing the business, it instantly routes the quarantined traffic to a Razorpay Virtual Account (Smart Collect) so a human can manually review the transaction.
+If an agent starts hallucinating or upstream APIs degrade, the system continuously calculates a health score (`H_bank = (1 - min(latency, 300) / 300) * (1 - error_rate)`). If the score drops below 0.8 (e.g., >20% error rate), the system stops trusting the automated path. Instead of hard-failing, it instantly routes the quarantined traffic to a Razorpay Virtual Account (Smart Collect) so a human can manually review the transaction.
 
 ---
 

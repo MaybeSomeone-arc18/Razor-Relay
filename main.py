@@ -122,6 +122,7 @@ class MerkleDelegationNode(BaseModel):
     primary_agent_id: str
     sub_agent_id: Optional[str] = None
     delegation_depth: int
+    agent_pubkey: str  # Hex-encoded Ed25519 public key
     
     @field_validator('delegation_depth')
     @classmethod
@@ -130,15 +131,9 @@ class MerkleDelegationNode(BaseModel):
             raise ValueError('Delegation depth must be <= 2')
         return v
 
-class MandateLimits(BaseModel):
-    per_transaction_cap: float = Field(ge=0)
-    daily_cap: float = Field(ge=0)
-    price_slippage_percent: float = Field(ge=0.0)
-
 class UAPMandatePayload(BaseModel):
     mandate_id: str
     delegation: MerkleDelegationNode
-    limits: MandateLimits
     scope: str
     expiry: int
     nonce: str
@@ -160,26 +155,38 @@ class EscrowSettleRequest(BaseModel):
     verification: VerificationResult
     amount_in_escrow: float = Field(ge=0)
 
-# --- Cryptographic Merkle Chain & HMAC Verification ---
-def format_canonical_amount(amount: float | int | str) -> str:
-    """Normalizes any monetary input to a strict 2-decimal string (e.g., 500 -> '500.00')."""
-    return f"{float(amount):.2f}"
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.exceptions import InvalidSignature
 
-def generate_hmac_signature(payload_dict: dict, secret: str) -> str:
-    """Generates an HMAC-SHA256 signature for the canonical message string."""
-    mandate_id = payload_dict.get("mandate_id", "")
-    root_hash = payload_dict.get("delegation", {}).get("human_root_hash", "")
-    nonce = payload_dict.get("nonce", "")
-    amount = payload_dict.get("requested_amount", 0.0)
+# --- Cryptographic Ed25519 Verification ---
+def get_canonical_payload(payload_dict: dict) -> bytes:
+    """Returns a deterministic, canonical byte representation of the payload."""
+    # Ensure amount is canonical
+    if "requested_amount" in payload_dict:
+        payload_dict["requested_amount"] = f"{float(payload_dict['requested_amount']):.2f}"
+    if "quoted_price" in payload_dict:
+        payload_dict["quoted_price"] = f"{float(payload_dict['quoted_price']):.2f}"
+    # Remove signature if present
+    payload_dict.pop("signature", None)
     
-    message = f"{mandate_id}:{root_hash}:{nonce}:{format_canonical_amount(amount)}".encode('utf-8')
-    return hmac.new(secret.encode('utf-8'), message, hashlib.sha256).hexdigest()
+    # Sort keys for deterministic JSON serialization
+    return json.dumps(payload_dict, sort_keys=True, separators=(',', ':')).encode('utf-8')
 
-def verify_hmac_signature(payload: UAPMandatePayload, secret: str) -> bool:
-    """Verifies HMAC-SHA256 signatures derived from human root hashes and mandate secrets."""
-    payload_dict = payload.model_dump(exclude={'signature'})
-    expected_mac = generate_hmac_signature(payload_dict, secret)
-    return hmac.compare_digest(expected_mac, payload.signature)
+def verify_ecdsa_signature(payload: UAPMandatePayload) -> bool:
+    """Verifies Ed25519 signature using the agent's registered public key."""
+    try:
+        payload_dict = payload.model_dump()
+        canonical_msg = get_canonical_payload(payload_dict)
+        pubkey_hex = payload.delegation.agent_pubkey
+        signature_bytes = bytes.fromhex(payload.signature)
+        pubkey_bytes = bytes.fromhex(pubkey_hex)
+        
+        public_key = ed25519.Ed25519PublicKey.from_public_bytes(pubkey_bytes)
+        public_key.verify(signature_bytes, canonical_msg)
+        return True
+    except (InvalidSignature, ValueError) as e:
+        logger.error(f"Signature verification failed: {e}")
+        return False
 
 # --- Circuit Breaker Switch Failover ---
 class CircuitBreaker:
@@ -244,9 +251,9 @@ def execute_guardrails(payload: UAPMandatePayload):
     if time.time() > payload.expiry:
         raise HTTPException(status_code=400, detail="MANDATE_EXPIRED")
         
-    # 2. Cryptographic Verification (HMAC first so we don't exhaust nonces on bad sigs)
-    if not verify_hmac_signature(payload, MANDATE_SECRET_KEY):
-        logger.warning(f"HMAC mismatch for mandate {payload.mandate_id}. Enforcing failure.")
+    # 2. Cryptographic Verification (Ed25519 full canonical payload)
+    if not verify_ecdsa_signature(payload):
+        logger.warning(f"Signature mismatch for mandate {payload.mandate_id}. Enforcing failure.")
         redis_client.incrbyfloat("metrics:attacks_blocked", 1.0)
         wal.append("SECURITY_INTERVENTION", {"reason": "DELEGATION_CHAIN_INVALID", "mandate_id": payload.mandate_id})
         raise HTTPException(status_code=401, detail="DELEGATION_CHAIN_INVALID")
@@ -261,26 +268,47 @@ def execute_guardrails(payload: UAPMandatePayload):
     if redis_client.get(f"revoked:{payload.mandate_id}"):
         raise HTTPException(status_code=403, detail="MANDATE_REVOKED")
         
-    # 5. Per-transaction ceiling caps
-    if payload.requested_amount > payload.limits.per_transaction_cap:
+    # 4.5. Server-side limits fetching
+    agent_pubkey = payload.delegation.agent_pubkey
+    limits_json = redis_client.get(f"agent_limits:{agent_pubkey}")
+    if not limits_json:
+        raise HTTPException(status_code=403, detail="AGENT_NOT_REGISTERED")
+    limits = json.loads(limits_json)
+    per_tx_cap = limits.get("per_transaction_cap", 0.0)
+    daily_cap = limits.get("daily_cap", 0.0)
+    slippage_percent = limits.get("price_slippage_percent", 0.0)
+
+    # 4.6. Velocity and Volume Anomaly Detection
+    velocity_key = f"velocity:{agent_pubkey}"
+    req_count = redis_client.incrbyfloat(velocity_key, 1.0)
+    if req_count == 1:
+        redis_client.expire(velocity_key, 60) # 60 second window
+    
+    # Block if > 15 requests per minute, or if requesting > 80% of daily cap at once
+    if req_count > 15 or payload.requested_amount > (daily_cap * 0.8):
+        insert_transaction(payload.mandate_id, "FRAUD_VELOCITY_BLOCKED", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
+        raise HTTPException(status_code=429, detail="ANOMALY_DETECTED")
+        
+    # 5. Per-transaction ceiling caps (Server-side enforced)
+    if payload.requested_amount > per_tx_cap:
         insert_transaction(payload.mandate_id, "REJECTED_CEILING", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=400, detail="CEILING_BREACH")
         
-    # 6. Price slippage
-    max_allowed_price = payload.quoted_price * (1 + (payload.limits.price_slippage_percent / 100))
+    # 6. Price slippage (Server-side enforced)
+    max_allowed_price = payload.quoted_price * (1 + (slippage_percent / 100))
     if payload.requested_amount > max_allowed_price:
         raise HTTPException(status_code=400, detail="PRICE_SLIPPAGE_DETECTED")
         
-    # 7. 24-hour aggregate spend limits - atomic check
-    daily_spend_key = f"spend:{payload.mandate_id}:{int(time.time() / 86400)}"
+    # 7. 24-hour aggregate spend limits - atomic check keyed on agent_pubkey
+    daily_spend_key = f"spend:{agent_pubkey}:{int(time.time() / 86400)}"
     current_spend = float(redis_client.get(daily_spend_key) or 0.0)
-    if current_spend + payload.requested_amount > payload.limits.daily_cap:
+    if current_spend + payload.requested_amount > daily_cap:
         insert_transaction(payload.mandate_id, "REJECTED_CAP", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=400, detail="AGGREGATE_CAP_BREACH")
 
     new_spend = redis_client.incrbyfloat(daily_spend_key, payload.requested_amount)
     redis_client.expire(daily_spend_key, 172800)  # 48 hours TTL
-    if new_spend > payload.limits.daily_cap:
+    if new_spend > daily_cap:
         redis_client.incrbyfloat(daily_spend_key, -payload.requested_amount)
         raise HTTPException(status_code=400, detail="AGGREGATE_CAP_BREACH")
         
@@ -291,6 +319,23 @@ def execute_guardrails(payload: UAPMandatePayload):
     return True
 
 # --- Endpoints ---
+
+class AgentRegistrationRequest(BaseModel):
+    agent_pubkey: str
+    per_transaction_cap: float = Field(ge=0)
+    daily_cap: float = Field(ge=0)
+    price_slippage_percent: float = Field(ge=0.0)
+
+@app.post("/v1/relay/agent/register")
+def register_agent(req: AgentRegistrationRequest, _=Depends(verify_admin_key)):
+    """Admin-only endpoint to register an agent and set their server-side limits."""
+    limits = {
+        "per_transaction_cap": req.per_transaction_cap,
+        "daily_cap": req.daily_cap,
+        "price_slippage_percent": req.price_slippage_percent
+    }
+    redis_client.set(f"agent_limits:{req.agent_pubkey}", json.dumps(limits))
+    return {"status": "success", "message": f"Limits registered for agent {req.agent_pubkey}"}
 
 @app.get("/v1/relay/health")
 def health_check():
@@ -317,14 +362,6 @@ def get_metrics():
         "estimated_platform_revenue": float(gmv) * 0.01
     }
 
-@app.post("/v1/relay/mandate/sign", dependencies=[Depends(verify_admin_key)])
-def sign_mandate(payload: dict):
-    """Generates a valid HMAC-SHA256 signature for the given payload."""
-    try:
-        signature = generate_hmac_signature(payload, MANDATE_SECRET_KEY)
-        return {"signature": signature}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/v1/relay/chaos/inject", dependencies=[Depends(verify_admin_key)])
 def inject_chaos(telemetry: SwitchTelemetry):
@@ -437,14 +474,14 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
     execute_guardrails(payload)
 
     # Log initial ESCROW_LOCKED status as soon as guardrails pass
-    agent_ip = request.client.host if request.client else "0.0.0.0"
+    client_ip = request.client.host if request.client else "0.0.0.0"
     insert_transaction(
         mandate_id=payload.mandate_id,
         status="ESCROW_LOCKED",
         amount=payload.requested_amount,
-        schema_type=getattr(payload, 'schema_type', 'service_rendered'),
-        agent_ip=agent_ip,
-        fee=0.0,
+        schema_type=payload.scope,
+        agent_ip=client_ip,
+        fee=0.0
     )
     
     # Razorpay SDK Integration
@@ -494,14 +531,13 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
             razorpay_payload = {"order_id": f"order_mock_err_{payload.nonce[:8]}"}
         else:
             razorpay_payload = {"vpa_id": f"va_mock_err_{payload.nonce[:8]}"}
-    
-    # Update SQLite log to SETTLED with fee deducted
+            
     insert_transaction(
         mandate_id=payload.mandate_id,
         status="SETTLED",
         amount=payload.requested_amount,
-        schema_type=getattr(payload, 'schema_type', 'service_rendered'),
-        agent_ip=agent_ip,
+        schema_type=payload.scope,
+        agent_ip=client_ip,
         fee=round(payload.requested_amount * 0.01, 2),
     )
 
