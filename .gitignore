@@ -4,3 +4,6 @@ venv/
 .env
 state_wal.log
 .pytest_cache/
+
+database/relay.db*
+database/creditcard.csv

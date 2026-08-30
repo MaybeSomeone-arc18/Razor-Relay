@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import requests
 
 from config.razorpay_config import razorpay_client
+from database.sqlite_client import init_db, insert_transaction, get_recent_transactions
 
 load_dotenv()
 
@@ -72,6 +73,10 @@ from database.redis_client import RedisStateStore
 redis_client = RedisStateStore(UPSTASH_URL, UPSTASH_TOKEN)
 if not UPSTASH_URL:
     logger.warning("Starting in IN-MEMORY MOCK MODE. Resilience and global state disabled. NOT FOR PRODUCTION.")
+
+# --- SQLite Transaction Log (WAL mode, non-blocking) ---
+init_db()
+logger.info("SQLite transaction log initialized (WAL mode active).")
 
 # --- State WAL (Write-Ahead Log) ---
 class WAL:
@@ -399,7 +404,7 @@ def settle_escrow(req: EscrowSettleRequest):
         pass  # Lock expires via TTL (120s). Deleting it manually causes race conditions on slow LLM responses.
 
 @app.post("/v1/relay/gateway/execute")
-def gateway_execute(payload: UAPMandatePayload):
+def gateway_execute(payload: UAPMandatePayload, request: Request):
     """Main execution endpoint protected by guardrails and circuit breaker."""
     routing_mechanism = "UPI_DIRECT_AUTOPAY"
     razorpay_payload = None
@@ -412,6 +417,17 @@ def gateway_execute(payload: UAPMandatePayload):
         logger.info("Circuit Breaker HALF_OPEN - Routing via Smart Collect Virtual Account fallback (5% probe active)")
         
     execute_guardrails(payload)
+
+    # Log initial ESCROW_LOCKED status as soon as guardrails pass
+    agent_ip = request.client.host if request.client else "0.0.0.0"
+    insert_transaction(
+        mandate_id=payload.mandate_id,
+        status="ESCROW_LOCKED",
+        amount=payload.requested_amount,
+        schema_type=getattr(payload, 'schema_type', 'service_rendered'),
+        agent_ip=agent_ip,
+        fee=0.0,
+    )
     
     # Razorpay SDK Integration
     start_req_time = time.time()
@@ -461,14 +477,45 @@ def gateway_execute(payload: UAPMandatePayload):
         else:
             razorpay_payload = {"vpa_id": f"va_mock_err_{payload.nonce[:8]}"}
     
+    # Update SQLite log to SETTLED with fee deducted
+    insert_transaction(
+        mandate_id=payload.mandate_id,
+        status="SETTLED",
+        amount=payload.requested_amount,
+        schema_type=getattr(payload, 'schema_type', 'service_rendered'),
+        agent_ip=agent_ip,
+        fee=round(payload.requested_amount * 0.01, 2),
+    )
+
     return {
         "status": "authorized",
-        "mandate_id": payload.mandate_id, 
+        "mandate_id": payload.mandate_id,
         "amount_processed": payload.requested_amount,
         "routing_state": breaker.state,
         "routing_mechanism": routing_mechanism,
         "razorpay_payload": razorpay_payload
     }
+
+
+@app.get("/v1/relay/logs", dependencies=[Depends(verify_admin_key)])
+def get_logs(limit: int = 15):
+    """
+    Returns the most recent transactions from the SQLite log.
+    Used by the Dashboard to render the live Escrow Logs table.
+    Rule: Capped at 15 rows by default for fast polling performance.
+    """
+    rows = get_recent_transactions(limit=min(limit, 50))
+    # Format timestamps as human-readable relative times
+    now = time.time()
+    for row in rows:
+        delta = now - row["timestamp"]
+        if delta < 60:
+            row["time_ago"] = f"{int(delta)}s ago" if delta >= 2 else "Just now"
+        elif delta < 3600:
+            row["time_ago"] = f"{int(delta // 60)}m ago"
+        else:
+            row["time_ago"] = f"{int(delta // 3600)}h ago"
+    return rows
 
 if __name__ == "__main__":
     import uvicorn

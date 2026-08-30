@@ -31,7 +31,11 @@ export default function DashboardPage() {
   };
 
   const exportLogsCSV = () => {
-    const csvContent = "data:text/csv;charset=utf-8,TIMESTAMP,MANDATE ID,AGENT IP,STATUS,FEE\nJust now,mnd_9f82b,192.168.1.104,SETTLED,5.00\n2s ago,mnd_4a11c,10.0.0.45,AUTHORIZED,12.00\n";
+    const csvRows = ["TIMESTAMP,MANDATE ID,AGENT IP,STATUS,FEE"];
+    logs.forEach(log => {
+      csvRows.push(`${log.time_ago},${log.mandate_id},${log.agent_ip},${log.status},${log.fee}`);
+    });
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -111,26 +115,33 @@ export default function DashboardPage() {
     fraud_attacks_blocked: 0,
     merchant_uptime_percent: 100
   });
+  const [logs, setLogs] = useState<any[]>([]);
 
-  // Real telemetry updates from backend
+  // Real telemetry and logs updates from backend
   useEffect(() => {
-    const fetchMetrics = async () => {
+    const fetchData = async () => {
       try {
-        const res = await fetch("http://localhost:8000/v1/relay/metrics", {
-          headers: { "X-Admin-Key": "demo_admin_key" }
-        });
-        if (res.ok) {
-          const data = await res.json();
+        const headers = { "X-Admin-Key": "demo_admin_key" };
+        const [metricsRes, logsRes] = await Promise.all([
+          fetch("http://localhost:8000/v1/relay/metrics", { headers }),
+          fetch("http://localhost:8000/v1/relay/logs", { headers })
+        ]);
+        if (metricsRes.ok) {
+          const data = await metricsRes.json();
           setMetrics(data);
           setVolume(data.total_gmv_processed);
-          setActiveRequests(Math.floor(Math.random() * 20) + 120); // Simulated active requests based on load
+          setActiveRequests(Math.floor(Math.random() * 20) + 120);
+        }
+        if (logsRes.ok) {
+          const logsData = await logsRes.json();
+          setLogs(logsData);
         }
       } catch (err) {
-        console.error("Failed to fetch metrics", err);
+        console.error("Failed to fetch data", err);
       }
     };
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 3000);
+    fetchData();
+    const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -301,30 +312,33 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="text-sm">
-                      {[
-                        { id: "mnd_9f82b", schema: "service_rendered", status: "VERIFIED", amt: 500, time: "Just now", color: "text-emerald-600 dark:text-[#00FF88]" },
-                        { id: "mnd_4a11c", schema: "payment_confirmed", status: "PENDING", amt: 1200, time: "2s ago", color: "text-blue-400" },
-                        { id: "mnd_7x99d", schema: "data_delivery", status: "BLOCKED", amt: 350, time: "12s ago", color: "text-red-400" },
-                        { id: "mnd_2q88a", schema: "service_rendered", status: "VERIFIED", amt: 890, time: "45s ago", color: "text-emerald-600 dark:text-[#00FF88]" },
-                      ].map((row, i) => (
+                      {logs.map((row, i) => {
+                        let statusColor = "text-emerald-600 dark:text-[#00FF88]";
+                        if (row.status.includes("INVALID") || row.status.includes("REJECTED") || row.status.includes("REVOKED") || row.status.includes("BLOCKED")) {
+                          statusColor = "text-red-400";
+                        } else if (row.status === "ESCROW_LOCKED") {
+                          statusColor = "text-blue-400";
+                        }
+                        return (
                         <motion.tr 
-                          key={i}
+                          key={row.mandate_id}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.1 }}
+                          transition={{ delay: i * 0.05 }}
                           className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors"
                         >
-                          <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time}</td>
-                          <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.id}</td>
-                          <td className="p-4 text-slate-500 dark:text-slate-400">{row.schema}</td>
+                          <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time_ago}</td>
+                          <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.mandate_id}</td>
+                          <td className="p-4 text-slate-500 dark:text-slate-400">{row.schema_type}</td>
                           <td className="p-4">
-                            <span className={`text-xs font-mono px-2 py-0.5 rounded border border-current ${row.color} bg-current/[0.05]`}>
+                            <span className={`text-xs font-mono px-2 py-0.5 rounded border border-current ${statusColor} bg-current/[0.05]`}>
                               {row.status}
                             </span>
                           </td>
-                          <td className="p-4 text-right font-mono text-slate-900 dark:text-white">₹{row.amt}</td>
+                          <td className="p-4 text-right font-mono text-slate-900 dark:text-white">₹{row.amount}</td>
                         </motion.tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -361,26 +375,27 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-                    {[
-                      { id: "mnd_9f82b", ip: "192.168.1.104", status: "SETTLED", fee: "₹5.00", time: "Just now", color: "text-emerald-600 dark:text-[#00FF88]" },
-                      { id: "mnd_4a11c", ip: "10.0.0.45", status: "AUTHORIZED", fee: "₹12.00", time: "2s ago", color: "text-blue-400" },
-                      { id: "mnd_7x99d", ip: "172.16.254.1", status: "SIGNATURE_INVALID", fee: "₹0.00", time: "12s ago", color: "text-red-400" },
-                      { id: "mnd_2q88a", ip: "192.168.1.104", status: "SETTLED", fee: "₹8.90", time: "45s ago", color: "text-emerald-600 dark:text-[#00FF88]" },
-                      { id: "mnd_8b22x", ip: "10.0.0.12", status: "SETTLED", fee: "₹1.50", time: "1m ago", color: "text-emerald-600 dark:text-[#00FF88]" },
-                      { id: "mnd_3p11z", ip: "172.16.254.3", status: "PROMPT_INJECTION", fee: "₹0.00", time: "3m ago", color: "text-red-400" },
-                    ].map((row, i) => (
-                      <tr key={i} className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors">
-                        <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time}</td>
-                        <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.id}</td>
-                        <td className="p-4 font-mono text-slate-400 dark:text-slate-500 text-xs">{row.ip}</td>
-                        <td className="p-4">
-                          <span className={`text-xs font-mono px-2 py-0.5 rounded border border-current ${row.color} bg-current/[0.05]`}>
-                            {row.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right font-mono text-slate-900 dark:text-white">{row.fee}</td>
-                      </tr>
-                    ))}
+                      {logs.map((row, i) => {
+                        let statusColor = "text-emerald-600 dark:text-[#00FF88]";
+                        if (row.status.includes("INVALID") || row.status.includes("REJECTED") || row.status.includes("REVOKED") || row.status.includes("BLOCKED")) {
+                          statusColor = "text-red-400";
+                        } else if (row.status === "ESCROW_LOCKED") {
+                          statusColor = "text-blue-400";
+                        }
+                        return (
+                        <tr key={row.mandate_id} className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors">
+                          <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time_ago}</td>
+                          <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.mandate_id}</td>
+                          <td className="p-4 font-mono text-slate-400 dark:text-slate-500 text-xs">{row.agent_ip}</td>
+                          <td className="p-4">
+                            <span className={`text-xs font-mono px-2 py-0.5 rounded border border-current ${statusColor} bg-current/[0.05]`}>
+                              {row.status}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right font-mono text-slate-900 dark:text-white">₹{row.fee.toFixed(2)}</td>
+                        </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
