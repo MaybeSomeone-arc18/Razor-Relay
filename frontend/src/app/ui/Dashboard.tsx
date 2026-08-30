@@ -201,6 +201,7 @@ export default function DashboardPage() {
     merchant_uptime_percent: 100
   });
   const [logs, setLogs] = useState<any[]>([]);
+  const [logFilter, setLogFilter] = useState<'ALL' | 'ANOMALIES' | 'SETTLED'>('ALL');
 
   // Real telemetry and logs updates from backend
   useEffect(() => {
@@ -434,9 +435,11 @@ export default function DashboardPage() {
                     <Server className="w-4 h-4 text-blue-400" />
                     Live Escrow Logs
                   </h3>
-                  <button className="text-xs font-mono bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 px-3 py-1 rounded text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white transition-colors">
-                    FILTER
-                  </button>
+                  <div className="flex bg-slate-100 dark:bg-[#0F172A] p-1 rounded-lg border border-slate-200 dark:border-blue-500/20">
+                    <button onClick={() => setLogFilter('ALL')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'ALL' ? 'bg-white dark:bg-blue-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>ALL</button>
+                    <button onClick={() => setLogFilter('ANOMALIES')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'ANOMALIES' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>ANOMALIES</button>
+                    <button onClick={() => setLogFilter('SETTLED')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'SETTLED' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>SETTLED</button>
+                  </div>
                 </div>
                 
                 <div className="overflow-x-auto">
@@ -451,7 +454,12 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="text-sm">
-                      {logs.map((row, i) => {
+                      {logs.filter(row => {
+                        if (logFilter === 'ALL') return true;
+                        if (logFilter === 'ANOMALIES') return row.status.includes('INVALID') || row.status.includes('REJECTED') || row.status.includes('REVOKED') || row.status.includes('BLOCKED');
+                        if (logFilter === 'SETTLED') return row.status === 'SETTLED';
+                        return true;
+                      }).map((row, i) => {
                         let statusColor = "text-emerald-600 dark:text-[#00FF88]";
                         if (row.status.includes("INVALID") || row.status.includes("REJECTED") || row.status.includes("REVOKED") || row.status.includes("BLOCKED")) {
                           statusColor = "text-red-400";
