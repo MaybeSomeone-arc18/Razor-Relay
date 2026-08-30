@@ -17,12 +17,7 @@ from database.sqlite_client import init_db, insert_transaction, get_recent_trans
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
 
-# Global demo agent keys for easy local simulation / manual override signature generation
-DEMO_PRIV_KEY = ed25519.Ed25519PrivateKey.generate()
-DEMO_PUB_KEY_HEX = DEMO_PRIV_KEY.public_key().public_bytes(
-    encoding=serialization.Encoding.Raw,
-    format=serialization.PublicFormat.Raw
-).hex()
+
 
 load_dotenv()
 
@@ -99,15 +94,6 @@ async def prewarm_ollama():
 async def startup_event():
     init_db()
     logger.info("SQLite transaction log initialized (WAL mode active).")
-    
-    # Pre-register the global demo agent public key so simulation/manual override works instantly
-    limits = {
-        "per_transaction_cap": 10000.0,
-        "daily_cap": 50000.0,
-        "price_slippage_percent": 5.0
-    }
-    redis_client.set(f"agent_limits:{DEMO_PUB_KEY_HEX}", json.dumps(limits))
-    logger.info(f"Global demo agent pre-registered. Pubkey: {DEMO_PUB_KEY_HEX}")
     
     await prewarm_ollama()
 
@@ -262,9 +248,7 @@ breaker = CircuitBreaker(redis_client)
 
 # --- Policy Guardrail Engine ---
 def execute_guardrails(payload: UAPMandatePayload):
-    # For dashboard compatibility with hardcoded mock_apk
-    if payload.delegation.agent_pubkey == "mock_apk":
-        payload.delegation.agent_pubkey = DEMO_PUB_KEY_HEX
+    agent_pubkey = payload.delegation.agent_pubkey
 
     # 1. Temporal Expiration
     if time.time() > payload.expiry:
@@ -609,16 +593,3 @@ def simulate_payment(req: SimulatePaymentRequest):
     wal.append("PAYMENT_SIMULATED", {"order_id": req.order_id})
     return {"status": "success", "message": f"Order {req.order_id} marked as paid in local cache."}
 
-@app.post("/v1/relay/mandate/sign", dependencies=[Depends(verify_admin_key)])
-def sign_mandate(payload: dict):
-    """Generates a valid Ed25519 signature for the given payload using the demo agent key."""
-    try:
-        # Ensure pubkey is replaced with DEMO_PUB_KEY_HEX for valid verification
-        if payload.get("delegation", {}).get("agent_pubkey") == "mock_apk":
-            payload["delegation"]["agent_pubkey"] = DEMO_PUB_KEY_HEX
-            
-        canonical_msg = get_canonical_payload(payload)
-        signature = DEMO_PRIV_KEY.sign(canonical_msg)
-        return {"signature": signature.hex(), "agent_pubkey": DEMO_PUB_KEY_HEX}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))

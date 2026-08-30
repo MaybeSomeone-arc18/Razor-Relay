@@ -16,6 +16,30 @@ UPSTASH_URL = os.getenv("UPSTASH_REDIS_REST_URL")
 UPSTASH_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN")
 redis = RedisStateStore(UPSTASH_URL, UPSTASH_TOKEN)
 
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
+import json
+
+# 1. Buyer generates ITS OWN keypair
+priv = ed25519.Ed25519PrivateKey.generate()
+pub_hex = priv.public_key().public_bytes(
+    encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+).hex()
+
+# 2. Operator registers the buyer's PUBLIC key + limits (admin-gated)
+requests.post(f"{BASE_URL}/v1/relay/agent/register", json={
+    "agent_pubkey": pub_hex, "per_transaction_cap": 10000.0,
+    "daily_cap": 50000.0, "price_slippage_percent": 5.0,
+}, headers={"X-Admin-Key": "demo_admin_key"})
+
+# 3. Buyer signs locally — server never sees the private key
+def sign_payload(payload: dict) -> str:
+    body = {k: v for k, v in payload.items() if k != "signature"}
+    body["requested_amount"] = f'{float(body["requested_amount"]):.2f}'
+    body["quoted_price"] = f'{float(body["quoted_price"]):.2f}'
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+    return priv.sign(canonical).hex()
+
 def generate_hash(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
@@ -63,7 +87,7 @@ def run_demo():
             "primary_agent_id": "buyer_01",
             "sub_agent_id": None,
             "delegation_depth": 1,
-            "agent_pubkey": "mock_apk"
+            "agent_pubkey": pub_hex
         },
         "scope": "vendor_checkout_payment",
         "expiry": int(time.time()) + 3600,
@@ -72,11 +96,8 @@ def run_demo():
         "quoted_price": 100.0
     }
     
-    # Sign it
-    res = requests.post(f"{BASE_URL}/v1/relay/mandate/sign", json=payload, headers={"X-Admin-Key": "demo_admin_key"})
-    res_data = res.json()
-    payload["signature"] = res_data["signature"]
-    payload["delegation"]["agent_pubkey"] = res_data.get("agent_pubkey", "mock_apk")
+    # Sign it locally
+    payload["signature"] = sign_payload(payload)
     print(f"[BUYER AGENT] Mandate cryptographically signed. HMAC: {payload['signature'][:16]}...")
     
     # Execute (authorize funds in Escrow)
@@ -128,8 +149,7 @@ def run_demo():
     mandate_id = f"demo_bad_{int(time.time())}"
     payload["mandate_id"] = mandate_id
     payload["nonce"] = str(uuid.uuid4())
-    res = requests.post(f"{BASE_URL}/v1/relay/mandate/sign", json=payload, headers={"X-Admin-Key": "demo_admin_key"})
-    payload["signature"] = res.json()["signature"]
+    payload["signature"] = sign_payload(payload)
     
     print("\n[BUYER AGENT] Created new mandate for 'Data labeling' (₹100)")
     res = requests.post(f"{BASE_URL}/v1/relay/gateway/execute", json=payload)
