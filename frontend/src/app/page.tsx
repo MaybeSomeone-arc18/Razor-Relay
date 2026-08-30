@@ -259,6 +259,114 @@ res = requests.post(<br/>
         </div>
       </section>
 
+      {/* The Problem & Solution Section */}
+      <section className={`py-20 px-6 border-t ${theme === 'dark' ? 'bg-[#0B192C]/50 border-blue-500/10' : 'bg-white border-slate-200'}`}>
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div className="space-y-6">
+              <h2 className={`text-3xl font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>The Agentic Trust Deficit.</h2>
+              <div className={`space-y-4 text-sm leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                <p>
+                  We are entering an era where AI agents negotiate, procure, and pay other AI agents. But giving an LLM direct access to a corporate treasury or RazorpayX API key is a massive liability. 
+                </p>
+                <p>
+                  Agents hallucinate. They are vulnerable to prompt injection. They cannot be legally held accountable for overspending.
+                </p>
+                <p className={`font-bold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>
+                  Razor-Relay bridges this trust deficit.
+                </p>
+                <p>
+                  Instead of giving agents money, we give them <strong className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>Cryptographically Bounded Mandates</strong>. Razor-Relay sits between the Agent and the Razorpay API, enforcing hardcoded financial ceilings, price slippage limits, and zero-trust HMAC signatures that simply cannot be bypassed.
+                </p>
+              </div>
+            </div>
+            <div className={`p-8 rounded-2xl border shadow-xl relative overflow-hidden ${theme === 'dark' ? 'bg-[#070F1E] border-slate-700/60 shadow-blue-900/10' : 'bg-slate-50 border-slate-200 shadow-slate-300/50'}`}>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl" />
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded bg-red-500/10 text-red-500 flex items-center justify-center border border-red-500/20"><Shield className="w-5 h-5" /></div>
+                  <div>
+                    <div className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Without Razor-Relay</div>
+                    <div className="text-xs text-slate-500">Agent has direct Razorpay keys. 100% Risk.</div>
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <div className="w-px h-8 bg-gradient-to-b from-red-500/20 to-blue-500/20" />
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20"><CheckCircle2 className="w-5 h-5" /></div>
+                  <div>
+                    <div className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>With Razor-Relay</div>
+                    <div className="text-xs text-slate-500">Zero-Trust Escrow. Mathematical Limits. 0% Risk.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Showcase (Hackathon Deliverables) */}
+      <section className={`py-20 px-6 border-t ${theme === 'dark' ? 'bg-[#02042B] border-blue-500/10' : 'bg-slate-50 border-slate-200'}`}>
+        <div className="max-w-6xl mx-auto space-y-12">
+          <div className="text-center max-w-2xl mx-auto">
+            <h2 className={`text-3xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>What We Built For The Judges</h2>
+            <p className={theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}>Everything you need to evaluate the Razor-Relay platform, built and deployed live.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <div className={`border rounded-xl p-6 transition-all shadow-lg flex gap-4 items-start ${theme === 'dark' ? 'bg-[#0B192C]/80 border-slate-700/60' : 'bg-white border-slate-200'}`}>
+              <div className="w-10 h-10 rounded-lg shrink-0 bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Live Kaggle Replay Engine</h3>
+                <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                  To prove our system handles scale, a background daemon streams the famous <strong>ULB Credit Card Fraud dataset</strong> through our gateway API in real-time. Watch the dashboard ingest live transactions.
+                </p>
+              </div>
+            </div>
+
+            <div className={`border rounded-xl p-6 transition-all shadow-lg flex gap-4 items-start ${theme === 'dark' ? 'bg-[#0B192C]/80 border-slate-700/60' : 'bg-white border-slate-200'}`}>
+              <div className="w-10 h-10 rounded-lg shrink-0 bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center">
+                <Terminal className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Interactive God Mode Terminal</h3>
+                <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                  We built a manual override terminal directly into the dashboard. Try to inject an invalid cryptographic signature or exceed the ₹10,000 transaction ceiling, and watch the Circuit Breaker block you live.
+                </p>
+              </div>
+            </div>
+
+            <div className={`border rounded-xl p-6 transition-all shadow-lg flex gap-4 items-start ${theme === 'dark' ? 'bg-[#0B192C]/80 border-slate-700/60' : 'bg-white border-slate-200'}`}>
+              <div className="w-10 h-10 rounded-lg shrink-0 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center">
+                <Code2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>HMAC-SHA256 Verification</h3>
+                <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Zero-trust means zero exceptions. Every single payload requires a mathematically perfect cryptographic signature. If the agent tampers with the amount, the hash breaks, and the payload is instantly rejected.
+                </p>
+              </div>
+            </div>
+
+            <div className={`border rounded-xl p-6 transition-all shadow-lg flex gap-4 items-start ${theme === 'dark' ? 'bg-[#0B192C]/80 border-slate-700/60' : 'bg-white border-slate-200'}`}>
+              <div className="w-10 h-10 rounded-lg shrink-0 bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Circuit Breaker Failover</h3>
+                <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                  When an agent's failure rate exceeds 5%, the gateway enters a Half-Open state. Instead of hard-failing transactions, it dynamically routes them to a Razorpay Virtual Account (Smart Collect) for human review.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Production Standards Grid */}
       <section className={`py-20 px-6 border-t ${theme === 'dark' ? 'bg-[#070F1E] border-blue-500/10' : 'bg-slate-50 border-slate-200'}`}>
         <div className="max-w-6xl mx-auto">
