@@ -76,9 +76,25 @@ export default function DashboardPage() {
   const [attackLog, setAttackLog] = useState<string>("> Terminal Ready. Awaiting manual override...");
   const [isAttacking, setIsAttacking] = useState(false);
 
+  const [isShaking, setIsShaking] = useState(false);
+
   const triggerAttack = async () => {
     setIsAttacking(true);
-    setAttackLog("> Computing HMAC-SHA256 signature...\n> Initiating manual mandate payload...");
+    setIsShaking(false);
+    setAttackLog("");
+    
+    const typeLog = async (text: string, speed = 15) => {
+      let current = "";
+      for (let i = 0; i < text.length; i++) {
+        current += text[i];
+        setAttackLog(prev => prev + text[i]);
+        await new Promise(r => setTimeout(r, speed));
+      }
+      setAttackLog(prev => prev + "\n");
+    };
+
+    await typeLog("> Initializing rogue AI agent routines...", 20);
+    await typeLog("> Computing HMAC-SHA256 cryptographic signature...", 10);
     
     try {
       const amount = parseFloat(attackAmount) || 500000;
@@ -123,7 +139,8 @@ export default function DashboardPage() {
           }
       }
 
-      setAttackLog(prev => prev + `\n> Submitting to POST /v1/relay/gateway/execute...`);
+      await typeLog("> Forging mandate payload...", 10);
+      await typeLog("> Submitting POST /v1/relay/gateway/execute...", 10);
 
       const res = await fetch("http://localhost:8000/v1/relay/gateway/execute", {
           method: "POST",
@@ -134,12 +151,21 @@ export default function DashboardPage() {
       const resData = await res.json();
       
       if (!res.ok) {
-          setAttackLog(prev => prev + `\n> [BLOCKED] 🔴 Circuit Breaker Tripped!\n> Status: ${res.status}\n> Reason: ${resData.detail}`);
+          setIsShaking(true);
+          await typeLog(`> [BLOCKED] 🔴 Circuit Breaker Tripped!`, 20);
+          await typeLog(`> Status: ${res.status}`, 10);
+          await typeLog(`> Reason: ${resData.detail}`, 10);
+          await typeLog(`> Connection terminated by Razor-Relay security layer.`, 15);
+          setTimeout(() => setIsShaking(false), 500);
       } else {
-          setAttackLog(prev => prev + `\n> [SUCCESS] 🟢 Mandate Authorized.\n> Status: 200 OK`);
+          await typeLog(`> [SUCCESS] 🟢 Mandate Authorized.`, 20);
+          await typeLog(`> Status: 200 OK`, 10);
+          await typeLog(`> Target treasury accessed.`, 15);
       }
     } catch (e: any) {
-      setAttackLog(prev => prev + `\n> [ERROR] Failed to reach gateway: ${e.message}`);
+      setIsShaking(true);
+      await typeLog(`> [ERROR] Failed to reach gateway: ${e.message}`, 10);
+      setTimeout(() => setIsShaking(false), 500);
     } finally {
       setIsAttacking(false);
     }
@@ -375,7 +401,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Interactive Attack Terminal (God Mode) */}
-              <div className="bg-slate-900 border border-red-500/30 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(239,68,68,0.15)] relative">
+              <div className={`bg-slate-900 border ${isShaking ? 'border-red-500 animate-shake shadow-[0_0_40px_rgba(239,68,68,0.4)]' : 'border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.15)]'} rounded-xl overflow-hidden relative transition-all duration-300`}>
                 <div className="bg-slate-950 px-4 py-2 flex items-center justify-between border-b border-red-500/20">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
@@ -454,38 +480,52 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="text-sm">
-                      {logs.filter(row => {
-                        if (logFilter === 'ALL') return true;
-                        if (logFilter === 'ANOMALIES') return row.status.includes('INVALID') || row.status.includes('REJECTED') || row.status.includes('REVOKED') || row.status.includes('BLOCKED');
-                        if (logFilter === 'SETTLED') return row.status === 'SETTLED';
-                        return true;
-                      }).map((row, i) => {
-                        let statusColor = "text-emerald-600 dark:text-[#00FF88]";
-                        if (row.status.includes("INVALID") || row.status.includes("REJECTED") || row.status.includes("REVOKED") || row.status.includes("BLOCKED")) {
-                          statusColor = "text-red-400";
-                        } else if (row.status === "ESCROW_LOCKED") {
-                          statusColor = "text-blue-400";
+                      {(() => {
+                        const filteredLogs = logs.filter(row => {
+                          if (logFilter === 'ALL') return true;
+                          if (logFilter === 'ANOMALIES') return row.status.includes('INVALID') || row.status.includes('REJECTED') || row.status.includes('REVOKED') || row.status.includes('BLOCKED');
+                          if (logFilter === 'SETTLED') return row.status === 'SETTLED';
+                          return true;
+                        });
+
+                        if (filteredLogs.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={5} className="p-8 text-center text-slate-500 font-mono text-xs">
+                                No logs found for this filter.
+                              </td>
+                            </tr>
+                          );
                         }
-                        return (
-                        <motion.tr 
-                          key={row.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors"
-                        >
-                          <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time_ago}</td>
-                          <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.mandate_id}</td>
-                          <td className="p-4 text-slate-500 dark:text-slate-400">{row.schema_type}</td>
-                          <td className="p-4">
-                            <span className={`text-xs font-mono px-2 py-0.5 rounded border border-current ${statusColor} bg-current/[0.05]`}>
-                              {row.status}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right font-mono text-slate-900 dark:text-white">₹{row.amount}</td>
-                        </motion.tr>
-                        );
-                      })}
+
+                        return filteredLogs.map((row, i) => {
+                          let statusColor = "text-emerald-600 dark:text-[#00FF88]";
+                          if (row.status.includes("INVALID") || row.status.includes("REJECTED") || row.status.includes("REVOKED") || row.status.includes("BLOCKED")) {
+                            statusColor = "text-red-400";
+                          } else if (row.status === "ESCROW_LOCKED") {
+                            statusColor = "text-blue-400";
+                          }
+                          return (
+                          <motion.tr 
+                            key={row.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors"
+                          >
+                            <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time_ago}</td>
+                            <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.mandate_id}</td>
+                            <td className="p-4 text-slate-500 dark:text-slate-400">{row.schema_type}</td>
+                            <td className="p-4">
+                              <span className={`text-xs font-mono px-2 py-0.5 rounded border border-current ${statusColor} bg-current/[0.05]`}>
+                                {row.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right font-mono text-slate-900 dark:text-white">₹{row.amount}</td>
+                          </motion.tr>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
