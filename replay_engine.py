@@ -14,7 +14,7 @@ def replay_from_csv():
     
     with open(CSV_PATH, "r") as f:
         reader = csv.DictReader(f)
-        for row in reader:
+        for index, row in enumerate(reader):
             amount_usd = float(row.get("Amount", 0))
             amount_inr = round(amount_usd * 83 + random.uniform(10, 200), 2)
             if amount_inr < 10:
@@ -23,13 +23,15 @@ def replay_from_csv():
             is_fraud = int(row.get("Class", 0)) == 1
             schema_type = random.choice(schema_pool)
             
-            nonce = hashlib.md5(str(time.time() + random.random()).encode()).hexdigest()
-            mandate_id = "mnd_" + nonce[:8]
+            now_ns = time.time_ns()
+            unique_suffix = f"{now_ns}_{random.randint(1000, 9999)}"
+            mandate_id = f"mnd_kgl_{index}_{unique_suffix}"
+            nonce_token = f"nonce_kgl_{unique_suffix}"
 
             payload = {
                 "mandate_id": mandate_id,
                 "requested_amount": amount_inr,
-                "nonce": nonce[:16],
+                "nonce": nonce_token,
                 "signature": "bad_signature_from_fraudster" if is_fraud else "",
                 "expiry": int(time.time()) + 3600,
                 "delegation": {
@@ -67,7 +69,7 @@ def replay_from_csv():
             except Exception as e:
                 print(f"Failed to connect: {e}")
 
-            time.sleep(random.uniform(0.5, 2.5))
+            time.sleep(0.05)
 
 if __name__ == "__main__":
     while True:

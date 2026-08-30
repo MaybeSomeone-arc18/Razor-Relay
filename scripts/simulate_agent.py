@@ -57,10 +57,11 @@ def simulate():
         "quoted_price": amount
     }
     
-    # Sign Payload
-    payload_str = json.dumps(payload, sort_keys=True, separators=(',', ':'))
-    crypto_seed = f"hash_abcd:{MANDATE_SECRET_KEY}".encode('utf-8')
-    signature = hmac.new(crypto_seed, payload_str.encode('utf-8'), hashlib.sha256).hexdigest()
+    root_hash = payload.get("delegation", {}).get("human_root_hash", "")
+    formatted_amount = f"{float(payload.get('requested_amount', 0)):.2f}"
+    message = f"{payload['mandate_id']}:{root_hash}:{nonce}:{formatted_amount}".encode('utf-8')
+    signature = hmac.new(MANDATE_SECRET_KEY.encode('utf-8'), message, hashlib.sha256).hexdigest()
+    
     payload["signature"] = signature
     
     log_step("Agent-Alpha", "Created UAP Mandate Payload", f"Requested Amount: ₹{amount:,.2f} | HMAC Signature: {signature[:16]}...")

@@ -75,8 +75,26 @@ if not UPSTASH_URL:
     logger.warning("Starting in IN-MEMORY MOCK MODE. Resilience and global state disabled. NOT FOR PRODUCTION.")
 
 # --- SQLite Transaction Log (WAL mode, non-blocking) ---
-init_db()
-logger.info("SQLite transaction log initialized (WAL mode active).")
+import httpx
+
+async def prewarm_ollama():
+    """Pre-warms local LLaMA-3.2 daemon on startup to eliminate cold-start latency."""
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            await client.post("http://localhost:11434/api/generate", json={
+                "model": "llama3.2:3b",
+                "prompt": "warmup",
+                "stream": False
+            })
+            logger.info("Ollama LLaMA-3.2 pre-warmed successfully.")
+    except Exception as e:
+        logger.warning(f"Ollama pre-warm skipped (Daemon offline or un-reachable): {e}")
+
+@app.on_event("startup")
+async def startup_event():
+    init_db()
+    logger.info("SQLite transaction log initialized (WAL mode active).")
+    await prewarm_ollama()
 
 # --- State WAL (Write-Ahead Log) ---
 class WAL:
@@ -143,25 +161,19 @@ class EscrowSettleRequest(BaseModel):
     amount_in_escrow: float = Field(ge=0)
 
 # --- Cryptographic Merkle Chain & HMAC Verification ---
-def _make_canonical(data):
-    if isinstance(data, dict):
-        return {k: _make_canonical(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [_make_canonical(v) for v in data]
-    elif isinstance(data, float) and data.is_integer():
-        return int(data)
-    return data
+def format_canonical_amount(amount: float | int | str) -> str:
+    """Normalizes any monetary input to a strict 2-decimal string (e.g., 500 -> '500.00')."""
+    return f"{float(amount):.2f}"
 
 def generate_hmac_signature(payload_dict: dict, secret: str) -> str:
-    """Generates an HMAC-SHA256 signature for the full canonical payload dict."""
-    canonical_dict = _make_canonical(payload_dict)
-    crypto_seed = f"{canonical_dict['delegation']['human_root_hash']}:{secret}".encode('utf-8')
-    payload_str = json.dumps(canonical_dict, sort_keys=True, separators=(',', ':'))
-    return hmac.new(
-        crypto_seed,
-        payload_str.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
+    """Generates an HMAC-SHA256 signature for the canonical message string."""
+    mandate_id = payload_dict.get("mandate_id", "")
+    root_hash = payload_dict.get("delegation", {}).get("human_root_hash", "")
+    nonce = payload_dict.get("nonce", "")
+    amount = payload_dict.get("requested_amount", 0.0)
+    
+    message = f"{mandate_id}:{root_hash}:{nonce}:{format_canonical_amount(amount)}".encode('utf-8')
+    return hmac.new(secret.encode('utf-8'), message, hashlib.sha256).hexdigest()
 
 def verify_hmac_signature(payload: UAPMandatePayload, secret: str) -> bool:
     """Verifies HMAC-SHA256 signatures derived from human root hashes and mandate secrets."""
@@ -407,7 +419,7 @@ def settle_escrow(req: EscrowSettleRequest):
             }
         }
     finally:
-        pass  # Lock expires via TTL (120s). Deleting it manually causes race conditions on slow LLM responses.
+        redis_client.delete(lock_key)
 
 @app.post("/v1/relay/gateway/execute")
 def gateway_execute(payload: UAPMandatePayload, request: Request):

@@ -28,7 +28,7 @@ VALID_STATUSES = {
 
 def get_connection() -> sqlite3.Connection:
     """Returns a connection with WAL mode and row_factory set."""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, timeout=15.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     # Rule 1: Enable WAL mode to allow concurrent reads + writes without locking
     conn.execute("PRAGMA journal_mode=WAL;")
