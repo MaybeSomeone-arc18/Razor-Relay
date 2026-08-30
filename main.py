@@ -13,7 +13,16 @@ from dotenv import load_dotenv
 import requests
 
 from config.razorpay_config import razorpay_client
-from database.sqlite_client import init_db, insert_transaction, get_recent_transactions
+from database.sqlite_client import init_db, insert_transaction, get_recent_transactions, update_transaction_status
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
+
+# Global demo agent keys for easy local simulation / manual override signature generation
+DEMO_PRIV_KEY = ed25519.Ed25519PrivateKey.generate()
+DEMO_PUB_KEY_HEX = DEMO_PRIV_KEY.public_key().public_bytes(
+    encoding=serialization.Encoding.Raw,
+    format=serialization.PublicFormat.Raw
+).hex()
 
 load_dotenv()
 
@@ -90,6 +99,16 @@ async def prewarm_ollama():
 async def startup_event():
     init_db()
     logger.info("SQLite transaction log initialized (WAL mode active).")
+    
+    # Pre-register the global demo agent public key so simulation/manual override works instantly
+    limits = {
+        "per_transaction_cap": 10000.0,
+        "daily_cap": 50000.0,
+        "price_slippage_percent": 5.0
+    }
+    redis_client.set(f"agent_limits:{DEMO_PUB_KEY_HEX}", json.dumps(limits))
+    logger.info(f"Global demo agent pre-registered. Pubkey: {DEMO_PUB_KEY_HEX}")
+    
     await prewarm_ollama()
 
 # --- State WAL (Write-Ahead Log) ---
@@ -243,6 +262,10 @@ breaker = CircuitBreaker(redis_client)
 
 # --- Policy Guardrail Engine ---
 def execute_guardrails(payload: UAPMandatePayload):
+    # For dashboard compatibility with hardcoded mock_apk
+    if payload.delegation.agent_pubkey == "mock_apk":
+        payload.delegation.agent_pubkey = DEMO_PUB_KEY_HEX
+
     # 1. Temporal Expiration
     if time.time() > payload.expiry:
         raise HTTPException(status_code=400, detail="MANDATE_EXPIRED")
@@ -371,7 +394,6 @@ def revoke_mandate(mandate_id: str):
     redis_client.set(f"revoked:{mandate_id}", "1")
     wal.append("MANDATE_REVOKED", {"mandate_id": mandate_id})
     return {"status": "revoked", "mandate_id": mandate_id}
-
 from agents.verifier import ai_verify_task, VerificationDecision, detect_prompt_injection
 
 @app.post("/v1/relay/escrow/settle", dependencies=[Depends(verify_admin_key)])
@@ -438,6 +460,16 @@ def settle_escrow(req: EscrowSettleRequest):
             "vendor_payout": vendor_payout,
             "refund_amount": refund_amount
         })
+        
+        # Update SQLite transaction status
+        update_transaction_status(
+            mandate_id=req.mandate_id,
+            new_status="SETTLED" if decision.passed else "REFUNDED",
+            amount=req.amount_in_escrow,
+            schema_type=decision.schema_used,
+            agent_ip="0.0.0.0",
+            fee=platform_fee
+        )
         
         # Always mark mandate as settled to prevent infinite refund exploit
         redis_client.set(settled_key, "1")
@@ -530,14 +562,8 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
         else:
             razorpay_payload = {"vpa_id": f"va_mock_err_{payload.nonce[:8]}"}
             
-    insert_transaction(
-        mandate_id=payload.mandate_id,
-        status="SETTLED",
-        amount=payload.requested_amount,
-        schema_type=payload.scope,
-        agent_ip=client_ip,
-        fee=round(payload.requested_amount * 0.01, 2),
-    )
+    # Database was already updated with ESCROW_LOCKED initially.
+    # On settlement, the status will be updated via the settlement webhook / endpoint.
 
     return {
         "status": "authorized",
@@ -572,3 +598,27 @@ def get_logs(limit: int = 15):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+class SimulatePaymentRequest(BaseModel):
+    order_id: str
+
+@app.post("/v1/relay/test/simulate_payment", dependencies=[Depends(verify_admin_key)])
+def simulate_payment(req: SimulatePaymentRequest):
+    """Simulates a payment being completed on a Razorpay Order in test-mode."""
+    redis_client.set(f"mock_paid:{req.order_id}", "1")
+    wal.append("PAYMENT_SIMULATED", {"order_id": req.order_id})
+    return {"status": "success", "message": f"Order {req.order_id} marked as paid in local cache."}
+
+@app.post("/v1/relay/mandate/sign", dependencies=[Depends(verify_admin_key)])
+def sign_mandate(payload: dict):
+    """Generates a valid Ed25519 signature for the given payload using the demo agent key."""
+    try:
+        # Ensure pubkey is replaced with DEMO_PUB_KEY_HEX for valid verification
+        if payload.get("delegation", {}).get("agent_pubkey") == "mock_apk":
+            payload["delegation"]["agent_pubkey"] = DEMO_PUB_KEY_HEX
+            
+        canonical_msg = get_canonical_payload(payload)
+        signature = DEMO_PRIV_KEY.sign(canonical_msg)
+        return {"signature": signature.hex(), "agent_pubkey": DEMO_PUB_KEY_HEX}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

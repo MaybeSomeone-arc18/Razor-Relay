@@ -9,6 +9,8 @@ from cryptography.hazmat.primitives import serialization
 
 API_URL = "http://localhost:8000/v1/relay/gateway/execute"
 REGISTRY_URL = "http://localhost:8000/v1/relay/agent/register"
+SETTLE_URL = "http://localhost:8000/v1/relay/escrow/settle"
+SIMULATE_URL = "http://localhost:8000/v1/relay/test/simulate_payment"
 CSV_PATH = "database/creditcard.csv"
 
 schema_pool = ["service_rendered", "payment_confirmed", "data_delivery", "asset_transfer"]
@@ -86,6 +88,30 @@ def send_request(agent_keys, amount_inr, schema_type, mandate_idx, is_fraud=Fals
         res = requests.post(API_URL, json=payload, timeout=2)
         if res.status_code == 200:
             print(f"✅ Replayed [Genuine]: {mandate_id} - ₹{amount_inr}")
+            # Simulate completion
+            if not is_fraud:
+                order_id = res.json().get("razorpay_payload", {}).get("order_id")
+                if schema_type == "payment_confirmed" and order_id:
+                    requests.post(SIMULATE_URL, json={"order_id": order_id}, headers={"X-Admin-Key": "demo_admin_key"})
+                    
+                settle_payload = {
+                    "mandate_id": mandate_id,
+                    "verification": {
+                        "scope": schema_type,
+                        "proof_of_work": f"Simulated auto-completion for schema {schema_type}",
+                        "proof_artifacts": {
+                            "razorpay_order_id": order_id if schema_type == "payment_confirmed" else "",
+                            "webhook_timestamp": int(time.time()) if schema_type == "service_rendered" else "",
+                            "artifact_hash": "mock_hash" if schema_type == "data_delivery" else "",
+                            "expected_hash": "mock_hash" if schema_type == "data_delivery" else ""
+                        }
+                    },
+                    "amount_in_escrow": amount_inr
+                }
+                # Random short delay for realistic dashboard
+                time.sleep(random.uniform(0.1, 0.5))
+                requests.post(SETTLE_URL, json=settle_payload, headers={"X-Admin-Key": "demo_admin_key"}, timeout=2)
+
         elif res.status_code == 429:
             print(f"🛡️ Replayed [Fraud Blocked - Anomaly/Velocity]: {mandate_id} - ₹{amount_inr}")
         elif res.status_code == 400:

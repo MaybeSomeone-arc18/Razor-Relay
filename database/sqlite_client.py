@@ -77,6 +77,37 @@ def insert_transaction(
         conn.commit()
 
 
+def update_transaction_status(
+    mandate_id: str, 
+    new_status: str, 
+    amount: float, 
+    schema_type: str = "service_rendered", 
+    agent_ip: str = "0.0.0.0", 
+    fee: float = 0.0
+):
+    """Updates the status and fee of a transaction, or inserts it if it doesn't exist."""
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE transactions 
+            SET status = ?, fee = ?, timestamp = ? 
+            WHERE mandate_id = ? AND status = 'ESCROW_LOCKED'
+            """,
+            (new_status, round(fee, 2), time.time(), mandate_id)
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            # Fallback to insert if not existing (e.g. in tests)
+            conn.execute(
+                """
+                INSERT INTO transactions (mandate_id, schema_type, agent_ip, status, amount, fee, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (mandate_id, schema_type, agent_ip, new_status, round(amount, 2), round(fee, 2), time.time())
+            )
+            conn.commit()
+
+
 def get_recent_transactions(limit: int = 15) -> list:
     """
     Rule 3: Returns the most recent N transactions ordered by timestamp DESC.
