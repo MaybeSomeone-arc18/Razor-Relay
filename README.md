@@ -95,3 +95,13 @@ python replay_engine.py
 
 ### 4. Enter the Dashboard
 Open your browser and navigate to `http://localhost:8000/ui`. You will immediately see the live telemetry streaming in. Use the Manual Override Terminal to try and hack your own gateway!
+
+### 5. Running with Docker
+If you prefer to run Razor-Relay using Docker without installing local dependencies:
+```bash
+# Build the multi-stage Docker image
+docker build -t razor-relay .
+
+# Run the container
+docker run -p 8000:8000 --env-file .env razor-relay
+```
