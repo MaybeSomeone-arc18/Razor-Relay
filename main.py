@@ -251,7 +251,7 @@ def execute_guardrails(payload: UAPMandatePayload):
         
     # 5. Per-transaction ceiling caps
     if payload.requested_amount > payload.limits.per_transaction_cap:
-        insert_transaction(payload.mandate_id, "REJECTED_CEILING", payload.requested_amount, schema_type=payload.scope, agent_ip=request.client.host)
+        insert_transaction(payload.mandate_id, "REJECTED_CEILING", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=400, detail="CEILING_BREACH")
         
     # 6. Price slippage
@@ -263,7 +263,7 @@ def execute_guardrails(payload: UAPMandatePayload):
     daily_spend_key = f"spend:{payload.mandate_id}:{int(time.time() / 86400)}"
     current_spend = float(redis_client.get(daily_spend_key) or 0.0)
     if current_spend + payload.requested_amount > payload.limits.daily_cap:
-        insert_transaction(payload.mandate_id, "REJECTED_CAP", payload.requested_amount, schema_type=payload.scope, agent_ip=request.client.host)
+        insert_transaction(payload.mandate_id, "REJECTED_CAP", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=400, detail="DAILY_CAP_BREACH")
 
     new_spend = redis_client.incrbyfloat(daily_spend_key, payload.requested_amount)
