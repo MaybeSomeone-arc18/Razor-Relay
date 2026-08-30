@@ -35,7 +35,7 @@ graph TD
     D -->|Yes| F{Check Financial Ceilings}
     F -->|Exceeds Limit| G[400 Ceiling Breach / Log Anomaly]
     F -->|Within Limit| H{Circuit Breaker Status}
-    H -->|Error Rate > 5%| I[Route to Razorpay Smart Collect VPA for Human Review]
+    H -->|Error Rate Exceeds 5%| I[Route to Razorpay Smart Collect VPA for Human Review]
     H -->|Healthy| J[Lock Funds in Escrow / Razorpay Orders API]
     J -->|4. Fast Database Write| K[SQLite WAL Database]
     K -->|5. Real-Time UI Sync| L[Live Dashboard Telemetry]
