@@ -37,10 +37,15 @@ def simulate_request():
     }
 
     try:
+        # First get a valid signature
+        payload_to_sign = {k: v for k, v in payload.items() if k != "signature"}
+        sign_res = requests.post("http://localhost:8000/v1/relay/mandate/sign", json=payload_to_sign, headers={"X-Admin-Key": "demo_admin_key"})
+        if sign_res.ok:
+            payload["signature"] = sign_res.json().get("signature")
         requests.post(API_URL, json=payload, timeout=2)
         print(f"Sent: {mandate_id} - ₹{amount} - {schema_type}")
     except Exception as e:
-        pass
+        print(f"Failed: {e}")
 
 def run_simulation():
     print("Starting Live Traffic Simulation...")
