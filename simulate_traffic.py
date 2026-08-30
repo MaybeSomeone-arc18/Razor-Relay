@@ -25,6 +25,7 @@ def simulate_request():
             "policy_hash": "mock_ph",
             "timestamp": int(time.time()),
             "primary_agent_id": "sim_agent",
+            "sub_agent_id": None,
             "delegation_depth": 1
         },
         "scope": schema_type,

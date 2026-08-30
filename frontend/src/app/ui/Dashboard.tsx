@@ -56,9 +56,94 @@ export default function DashboardPage() {
     }, 800);
   };
 
+  const [failoverThreshold, setFailoverThreshold] = useState("5");
+  const [saveSettingsStatus, setSaveSettingsStatus] = useState<string | null>(null);
+  const saveSettings = () => {
+    setSaveSettingsStatus("Saving...");
+    setTimeout(() => {
+      setSaveSettingsStatus("Settings saved successfully.");
+      setTimeout(() => setSaveSettingsStatus(null), 3000);
+    }, 500);
+  };
+
   const [activeRequests, setActiveRequests] = useState(142);
   const [volume, setVolume] = useState(12500);
   const [theme, setTheme] = useState("dark");
+
+  // Attack Terminal State
+  const [attackAmount, setAttackAmount] = useState<string>("500000");
+  const [attackInvalidSig, setAttackInvalidSig] = useState<boolean>(true);
+  const [attackLog, setAttackLog] = useState<string>("> Terminal Ready. Awaiting manual override...");
+  const [isAttacking, setIsAttacking] = useState(false);
+
+  const triggerAttack = async () => {
+    setIsAttacking(true);
+    setAttackLog("> Computing HMAC-SHA256 signature...\n> Initiating manual mandate payload...");
+    
+    try {
+      const amount = parseFloat(attackAmount) || 500000;
+      const nonce = Math.random().toString(36).substring(2, 15);
+      const mandate_id = "mnd_" + nonce.substring(0, 8);
+      
+      const payload: any = {
+          "mandate_id": mandate_id,
+          "requested_amount": amount,
+          "nonce": nonce,
+          "signature": attackInvalidSig ? "bad_signature_from_hacker" : "valid_signature_placeholder",
+          "expiry": Math.floor(Date.now() / 1000) + 3600,
+          "delegation": {
+              "human_root_hash": "mock_hrh",
+              "agent_pubkey": "mock_apk",
+              "policy_hash": "mock_ph",
+              "timestamp": Math.floor(Date.now() / 1000),
+              "primary_agent_id": "rogue_agent",
+              "sub_agent_id": null,
+              "delegation_depth": 1
+          },
+          "scope": "service_rendered",
+          "quoted_price": amount,
+          "limits": {
+              "per_transaction_cap": 10000.0,
+              "daily_cap": 50000.0,
+              "price_slippage_percent": 5.0
+          }
+      };
+
+      if (!attackInvalidSig) {
+          const payloadToSign = { ...payload };
+          delete payloadToSign.signature;
+          const signRes = await fetch("http://localhost:8000/v1/relay/mandate/sign", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Admin-Key": "demo_admin_key" },
+              body: JSON.stringify(payloadToSign)
+          });
+          if (signRes.ok) {
+              const data = await signRes.json();
+              payload.signature = data.signature;
+          }
+      }
+
+      setAttackLog(prev => prev + `\n> Submitting to POST /v1/relay/gateway/execute...`);
+
+      const res = await fetch("http://localhost:8000/v1/relay/gateway/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Admin-Key": "demo_admin_key" },
+          body: JSON.stringify(payload)
+      });
+      
+      const resData = await res.json();
+      
+      if (!res.ok) {
+          setAttackLog(prev => prev + `\n> [BLOCKED] 🔴 Circuit Breaker Tripped!\n> Status: ${res.status}\n> Reason: ${resData.detail}`);
+      } else {
+          setAttackLog(prev => prev + `\n> [SUCCESS] 🟢 Mandate Authorized.\n> Status: 200 OK`);
+      }
+    } catch (e: any) {
+      setAttackLog(prev => prev + `\n> [ERROR] Failed to reach gateway: ${e.message}`);
+    } finally {
+      setIsAttacking(false);
+    }
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('razorpay_theme');
@@ -288,6 +373,60 @@ export default function DashboardPage() {
 
               </div>
 
+              {/* Interactive Attack Terminal (God Mode) */}
+              <div className="bg-slate-900 border border-red-500/30 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(239,68,68,0.15)] relative">
+                <div className="bg-slate-950 px-4 py-2 flex items-center justify-between border-b border-red-500/20">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-xs font-mono text-red-400 font-semibold tracking-widest uppercase">Manual Override Terminal</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">ROOT ACCESS</span>
+                </div>
+                
+                <div className="p-5 flex flex-col md:flex-row gap-6">
+                  {/* Controls */}
+                  <div className="flex-1 space-y-4">
+                    <p className="text-xs text-slate-400 font-mono">Act as a rogue AI agent. Attempt to bypass cryptographic limits and steal escrow funds.</p>
+                    
+                    <div>
+                      <label className="block text-[10px] font-mono text-slate-500 mb-1">REQUESTED AMOUNT (₹)</label>
+                      <input 
+                        type="number" 
+                        value={attackAmount}
+                        onChange={(e) => setAttackAmount(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-red-500/50"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        id="invalidSig"
+                        checked={attackInvalidSig}
+                        onChange={(e) => setAttackInvalidSig(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-950 text-red-500 focus:ring-red-500"
+                      />
+                      <label htmlFor="invalidSig" className="text-xs font-mono text-slate-400 cursor-pointer">Inject Invalid Cryptographic Signature</label>
+                    </div>
+
+                    <button 
+                      onClick={triggerAttack}
+                      disabled={isAttacking}
+                      className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30 font-mono text-sm py-2 rounded transition-colors disabled:opacity-50"
+                    >
+                      {isAttacking ? 'EXECUTING...' : 'EXECUTE ATTACK VECTOR'}
+                    </button>
+                  </div>
+
+                  {/* Console Output */}
+                  <div className="flex-1 bg-black rounded p-3 font-mono text-[11px] overflow-y-auto h-40 border border-slate-800">
+                    <pre className={`whitespace-pre-wrap ${attackLog.includes('BLOCKED') || attackLog.includes('ERROR') ? 'text-red-400' : attackLog.includes('SUCCESS') ? 'text-emerald-400' : 'text-blue-400'}`}>
+                      {attackLog}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
               {/* Real-time Data Table */}
               <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl overflow-hidden shadow-lg">
                 <div className="p-5 border-b border-slate-200 dark:border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -321,7 +460,7 @@ export default function DashboardPage() {
                         }
                         return (
                         <motion.tr 
-                          key={row.mandate_id}
+                          key={row.id}
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: i * 0.05 }}
@@ -383,7 +522,7 @@ export default function DashboardPage() {
                           statusColor = "text-blue-400";
                         }
                         return (
-                        <tr key={row.mandate_id} className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors">
+                        <tr key={row.id} className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors">
                           <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time_ago}</td>
                           <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.mandate_id}</td>
                           <td className="p-4 font-mono text-slate-400 dark:text-slate-500 text-xs">{row.agent_ip}</td>
@@ -533,9 +672,20 @@ export default function DashboardPage() {
                 <div>
                   <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Failover Threshold</label>
                   <div className="flex items-center gap-2">
-                    <input type="number" defaultValue={5} className="w-24 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500/60" />
+                    <input type="number" value={failoverThreshold} onChange={(e) => setFailoverThreshold(e.target.value)} className="w-24 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500/60" />
                     <span className="text-sm text-slate-500">%</span>
                   </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-200 dark:border-blue-500/20/50 flex items-center gap-4">
+                  <button onClick={saveSettings} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all">
+                    Save Changes
+                  </button>
+                  {saveSettingsStatus && (
+                    <p className={`text-xs font-mono ${saveSettingsStatus.includes('saved') ? 'text-emerald-500 dark:text-[#00FF88]' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {saveSettingsStatus}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
