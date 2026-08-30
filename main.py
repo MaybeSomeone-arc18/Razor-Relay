@@ -310,7 +310,6 @@ class CircuitBreaker:
         logger.info(f"Switch Failover evaluated: H_bank={h_bank:.2f}, State={self.state}")
 
 breaker = CircuitBreaker(redis_client)
-
 def _record_live(success: bool, latency_ms: float = 50.0):
     """Rolling-window health telemetry so transient Razorpay errors don't permanently drop the score."""
     WINDOW = 40
@@ -555,14 +554,18 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
     routing_mechanism = "UPI_DIRECT_AUTOPAY"
     razorpay_payload = None
 
+    # Degrade instead of hard-halting: keep processing so telemetry stays live and the
+    # breaker can self-recover as healthy traffic returns. (Matches the "route to human
+    # review instead of hard-failing" design.)
     if breaker.state == CircuitBreaker.STATE_OPEN:
-        raise HTTPException(status_code=503, detail="CIRCUIT_BREAKER_HALT")
-        
-    if breaker.state == CircuitBreaker.STATE_HALF_OPEN:
+        routing_mechanism = "HUMAN_REVIEW_QUEUE"
+        logger.info("Circuit Breaker OPEN - degrading to human-review routing (probe traffic still flowing)")
+    elif breaker.state == CircuitBreaker.STATE_HALF_OPEN:
         routing_mechanism = "SMART_COLLECT_VPA"
         logger.info("Circuit Breaker HALF_OPEN - Routing via Smart Collect Virtual Account fallback (5% probe active)")
-        
+
     execute_guardrails(payload)
+
 
     # Log initial ESCROW_LOCKED status as soon as guardrails pass
     client_ip = request.client.host if request.client else "0.0.0.0"
@@ -575,7 +578,8 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
         fee=0.0
     )
     
-    # Razorpay SDK Integration (real test-mode, hardened)
+    # Razorpay SDK Integration
+    #     # Razorpay SDK Integration (real test-mode, hardened)
     start_req_time = time.time()
     try:
         import config.razorpay_config as razorpay_cfg
@@ -609,6 +613,21 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
         logger.error(f"Razorpay API Error: {e}")
         _record_live(success=False, latency_ms=200.0)
         razorpay_payload = {"order_id": f"order_mock_err_{payload.nonce[:8]}"}
+       
+        # Live error telemetry feedback loop
+        err_count = redis_client.incrbyfloat("circuit_breaker:errors_live", 1.0)
+        total_count = redis_client.incrbyfloat("circuit_breaker:total_live", 1.0)
+        if total_count >= 5:
+            breaker.update_telemetry(SwitchTelemetry(
+                latency_ms=100.0,
+                rolling_error_rate=(err_count / total_count)
+            ))
+            
+        # Graceful fallback to mock to ensure zero-trust pipeline doesn't crash on network timeouts
+        if breaker.state == CircuitBreaker.STATE_CLOSED:
+            razorpay_payload = {"order_id": f"order_mock_err_{payload.nonce[:8]}"}
+        else:
+            razorpay_payload = {"vpa_id": f"va_mock_err_{payload.nonce[:8]}"}
             
     # Database was already updated with ESCROW_LOCKED initially.
     # On settlement, the status will be updated via the settlement webhook / endpoint.
