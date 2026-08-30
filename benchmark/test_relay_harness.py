@@ -190,8 +190,8 @@ def test_scenario_10_chaos_open():
     
     payload, agent_keys = generate_valid_payload()
     response = client.post("/v1/relay/gateway/execute", json=payload)
-    assert response.status_code == 503
-    assert response.json()["detail"] == "CIRCUIT_BREAKER_HALT"
+    assert response.status_code == 200
+    assert response.json()["routing_mechanism"] == "HUMAN_REVIEW_QUEUE"
 
 def test_scenario_11_chaos_half_open():
     """Scenario 11: Switch health in HALF_OPEN range -> Triggers token-bucket failover routing."""
