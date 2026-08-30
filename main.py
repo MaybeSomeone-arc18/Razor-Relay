@@ -91,11 +91,79 @@ async def prewarm_ollama():
         logger.warning(f"Ollama pre-warm skipped (Daemon offline or un-reachable): {e}")
 
 @app.on_event("startup")
+def _run_demo_traffic():
+    """Background thread: streams validly-signed mandates so the logs table stays live."""
+    import time, random, hashlib, json, requests
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+    from cryptography.hazmat.primitives import serialization
+
+    base = "http://127.0.0.1:8000"
+    admin = {"X-Admin-Key": os.getenv("ADMIN_KEY", "demo_admin_key")}
+
+    priv = ed25519.Ed25519PrivateKey.generate()
+    pub_hex = priv.public_key().public_bytes(
+        encoding=serialization. Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    ).hex()
+
+    def sign(payload):
+        body = {k: v for k, v in payload.items() if k != "signature"}
+        body["requested_amount"] = f'{float(body["requested_amount"]):.2f}'
+        body["quoted_price"] = f'{float(body["quoted_price"]):.2f}'
+        canonical = json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+        return priv.sign(canonical).hex()
+
+    # Wait for the server to accept connections, then register the agent (with retries).
+    # High daily_cap so it keeps producing ESCROW_LOCKED rows instead of hitting the cap.
+    for _ in range(15):
+        try:
+            r = requests.post(f"{base}/v1/relay/agent/register", json={
+                "agent_pubkey": pub_hex, "per_transaction_cap": 10000.0,
+                "daily_cap": 100000000.0, "price_slippage_percent": 5.0,
+            }, headers=admin, timeout=3)
+            if r.status_code == 200:
+                break
+        except Exception:
+            pass
+        time.sleep(2)
+
+    schemas = ["service_rendered", "payment_confirmed", "data_delivery", "asset_transfer"]
+    while True:
+        try:
+            nonce = hashlib.md5(str(time.time() + random.random()).encode()).hexdigest()
+            amount = round(random.uniform(50.0, 5000.0), 2)
+            payload = {
+                "mandate_id": "mnd_" + nonce[:8],
+                "requested_amount": amount,
+                "nonce": nonce[:16],
+                "signature": "",
+                "expiry": int(time.time()) + 3600,
+                "delegation": {
+                    "human_root_hash": "mock_hrh",
+                    "agent_pubkey": pub_hex,
+                    "policy_hash": "mock_ph",
+                    "timestamp": int(time.time()),
+                    "primary_agent_id": "sim_agent",
+                    "sub_agent_id": None,
+                    "delegation_depth": 1,
+                },
+                "scope": random.choice(schemas),
+                "quoted_price": amount,
+            }
+            payload["signature"] = sign(payload)
+            requests.post(f"{base}/v1/relay/gateway/execute", json=payload, timeout=3)
+        except Exception:
+            pass
+        time.sleep(random.uniform(1.5, 4.0))
+
+@app.on_event("startup")
 async def startup_event():
     init_db()
     logger.info("SQLite transaction log initialized (WAL mode active).")
-    
     await prewarm_ollama()
+    import threading
+    threading.Thread(target=_run_demo_traffic, daemon=True).start()
+
 
 # --- State WAL (Write-Ahead Log) ---
 class WAL:
