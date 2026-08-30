@@ -10,7 +10,7 @@ I wanted to build a system where we do not trust the AI. We trust the math. Razo
 
 ## 1. The Economics and Business Model
 
-The business model of Razor-Relay is incredibly straightforward and built to scale infinitely alongside the growth of agent-to-agent commerce.
+The business model of Razor-Relay is incredibly straightforward and built to scale reliably alongside the growth of agent-to-agent commerce.
 
 1. **The Negotiation:** An AI Agent decides it needs to buy a service (for example, purchasing API credits or cloud storage).
 2. **The Cryptographic Mandate:** The Agent creates a "Mandate" (a request to spend money) and signs a strictly canonicalized JSON payload using its deterministic Ed25519 asymmetric private key.
