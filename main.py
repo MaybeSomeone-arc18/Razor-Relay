@@ -90,7 +90,6 @@ async def prewarm_ollama():
     except Exception as e:
         logger.warning(f"Ollama pre-warm skipped (Daemon offline or un-reachable): {e}")
 
-@app.on_event("startup")
 def _run_demo_traffic():
     """Background thread: streams validly-signed mandates so the logs table stays live."""
     import time, random, hashlib, json, requests
@@ -102,7 +101,7 @@ def _run_demo_traffic():
 
     priv = ed25519.Ed25519PrivateKey.generate()
     pub_hex = priv.public_key().public_bytes(
-        encoding=serialization. Encoding.Raw,
+        encoding=serialization.Encoding.Raw,
         format=serialization.PublicFormat.Raw,
     ).hex()
 
@@ -660,4 +659,3 @@ def simulate_payment(req: SimulatePaymentRequest):
     redis_client.set(f"mock_paid:{req.order_id}", "1")
     wal.append("PAYMENT_SIMULATED", {"order_id": req.order_id})
     return {"status": "success", "message": f"Order {req.order_id} marked as paid in local cache."}
-
