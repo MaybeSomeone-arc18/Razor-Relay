@@ -19,6 +19,10 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from main import app, MANDATE_SECRET_KEY, redis_client, wal, breaker, CircuitBreaker
+from database.sqlite_client import init_db
+
+# Initialize database schema before tests since TestClient without 'with' block bypasses FastAPI startup events
+init_db()
 
 client = TestClient(app)
 
