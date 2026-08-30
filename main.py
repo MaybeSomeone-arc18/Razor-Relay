@@ -264,7 +264,7 @@ def execute_guardrails(payload: UAPMandatePayload):
     current_spend = float(redis_client.get(daily_spend_key) or 0.0)
     if current_spend + payload.requested_amount > payload.limits.daily_cap:
         insert_transaction(payload.mandate_id, "REJECTED_CAP", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
-        raise HTTPException(status_code=400, detail="DAILY_CAP_BREACH")
+        raise HTTPException(status_code=400, detail="AGGREGATE_CAP_BREACH")
 
     new_spend = redis_client.incrbyfloat(daily_spend_key, payload.requested_amount)
     redis_client.expire(daily_spend_key, 172800)  # 48 hours TTL
