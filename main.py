@@ -485,52 +485,29 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
     try:
         import config.razorpay_config as razorpay_cfg
 
--        if breaker.state == CircuitBreaker.STATE_CLOSED:
--            if razorpay_client and "pytest" not in sys.modules:
--                order_data = {
--                    "amount": int(payload.requested_amount * 100),
--                    "currency": "INR",
--                    "receipt": payload.mandate_id[:40]
--                }
--                rzp_res = razorpay_client.order.create(data=order_data)
--                razorpay_payload = {"order_id": rzp_res.get("id")}
--            else:
--                razorpay_payload = {"order_id": f"order_mock_{payload.nonce[:8]}"}
--                
--        elif breaker.state == CircuitBreaker.STATE_HALF_OPEN:
--            if razorpay_client and "pytest" not in sys.modules:
--                va_data = {
--                    "receivers": {"types": ["vpa"]},
--                    "description": "Smart Collect VPA for Agentic Escrow",
--                    "amount_expected": int(payload.requested_amount * 100)
--                }
--                rzp_res = razorpay_client.virtual_account.create(data=va_data)
--                razorpay_payload = {"vpa_id": rzp_res.get("id")}
--            else:
--                razorpay_payload = {"vpa_id": f"va_mock_{payload.nonce[:8]}"}
-+        if breaker.state == CircuitBreaker.STATE_CLOSED:
-+            if razorpay_cfg.razorpay_client:
-+                order_data = {
-+                    "amount": int(payload.requested_amount * 100),
-+                    "currency": "INR",
-+                    "receipt": payload.mandate_id[:40]
-+                }
-+                rzp_res = razorpay_cfg.razorpay_client.order.create(data=order_data)
-+                razorpay_payload = {"order_id": rzp_res.get("id")}
-+            else:
-+                razorpay_payload = {"order_id": f"order_mock_{payload.nonce[:8]}"}
-+                
-+        elif breaker.state == CircuitBreaker.STATE_HALF_OPEN:
-+            if razorpay_cfg.razorpay_client:
-+                va_data = {
-+                    "receivers": {"types": ["vpa"]},
-+                    "description": "Smart Collect VPA for Agentic Escrow",
-+                    "amount_expected": int(payload.requested_amount * 100)
-+                }
-+                rzp_res = razorpay_cfg.razorpay_client.virtual_account.create(data=va_data)
-+                razorpay_payload = {"vpa_id": rzp_res.get("id")}
-+            else:
-+                razorpay_payload = {"vpa_id": f"va_mock_{payload.nonce[:8]}"}
+        if breaker.state == CircuitBreaker.STATE_CLOSED:
+            if razorpay_cfg.razorpay_client:
+                order_data = {
+                    "amount": int(payload.requested_amount * 100),
+                    "currency": "INR",
+                    "receipt": payload.mandate_id[:40]
+                }
+                rzp_res = razorpay_cfg.razorpay_client.order.create(data=order_data)
+                razorpay_payload = {"order_id": rzp_res.get("id")}
+            else:
+                razorpay_payload = {"order_id": f"order_mock_{payload.nonce[:8]}"}
+                
+        elif breaker.state == CircuitBreaker.STATE_HALF_OPEN:
+            if razorpay_cfg.razorpay_client:
+                va_data = {
+                    "receivers": {"types": ["vpa"]},
+                    "description": "Smart Collect VPA for Agentic Escrow",
+                    "amount_expected": int(payload.requested_amount * 100)
+                }
+                rzp_res = razorpay_cfg.razorpay_client.virtual_account.create(data=va_data)
+                razorpay_payload = {"vpa_id": rzp_res.get("id")}
+            else:
+                razorpay_payload = {"vpa_id": f"va_mock_{payload.nonce[:8]}"}
                 
         # Track live success telemetry
         latency_ms = (time.time() - start_req_time) * 1000
