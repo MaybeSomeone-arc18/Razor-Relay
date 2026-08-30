@@ -14,11 +14,11 @@ The business model of Razor-Relay is incredibly straightforward and built to sca
 
 1. **The Negotiation:** An AI Agent decides it needs to buy a service (for example, purchasing API credits or cloud storage).
 2. **The Cryptographic Mandate:** The Agent creates a "Mandate" (a request to spend money) and signs a strictly canonicalized JSON payload using its deterministic Ed25519 asymmetric private key.
-3. **The Interception:** Razor-Relay intercepts this mandate before it hits Razorpay. It verifies the signature against the agent's pre-registered public key, then looks up the agent's hardcoded financial limits on the server (e.g., "This agent cannot spend more than 10,000 INR per transaction", "Cannot exceed 50,000 INR per day", or "Cannot exceed 15 requests per minute").
+3. **The Interception:** Razor-Relay intercepts this mandate before it hits Razorpay. It verifies the signature against the agent's pre-registered public key, then looks up the agent's hardcoded financial limits on the server (e.g., "This agent cannot spend more than 10,000 INR per transaction", "Cannot exceed 50,000 INR per day", or "Cannot exceed 12 requests per 10 seconds").
 4. **The Escrow Simulation:** If the math checks out, Razor-Relay authorizes the transaction. While labeled "Escrow" in the UI for clarity, this simulates a Razorpay Route / Nodal Account hold where funds are ring-fenced for the agent.
 5. **The Revenue:** When the service is delivered and funds are settled to the vendor, Razor-Relay takes a **1% platform fee** for securing the transaction. 
 
-As AI agents begin executing millions of micro-transactions per second, this 1% fee generates a highly scalable, passive revenue stream for the platform.
+As AI agents begin executing micro-transactions at scale, this 1% fee generates a highly scalable, passive revenue stream for the platform.
 
 ---
 
@@ -45,16 +45,16 @@ graph TD
 
 ## 3. Core Technical Engineering (What I Built)
 
-This is not a mock concept. I engineered Razor-Relay to be a production-ready system capable of handling concurrent, real-world traffic.
+I engineered Razor-Relay to demonstrate handling concurrent, real-world traffic patterns safely.
 
 ### High-Throughput Ingestion Engine
-I built a background daemon that streams the Kaggle Credit Card fraud dataset directly into the API. This proves the system can ingest, validate, and route thousands of live transactions per second without crashing.
+I built a background daemon that streams the Kaggle Credit Card fraud dataset directly into the API. This proves the system can ingest, validate, and route high volumes of live transactions without crashing.
 
 ### Interactive Threat Mitigation Terminal
 I built a "Manual Override" terminal directly into the dashboard. You can act as a rogue AI agent, input a massive financial amount, inject an invalid cryptographic signature, and watch the backend circuit breaker block your attack in real-time on the UI.
 
 ### Database Write-Ahead Logging (WAL)
-Because the dashboard polls the database 10 times a second for live logs, and the Replay Engine writes to it simultaneously, standard databases would lock and crash. I overhauled the database layer to use SQLite WAL (Write-Ahead Logging) mode, allowing infinite concurrent reads and writes with zero latency.
+Because the dashboard polls the database 10 times a second for live logs, and the Replay Engine writes to it simultaneously, standard databases would lock and crash. I overhauled the database layer to use SQLite WAL (Write-Ahead Logging) mode, preventing database lockups during concurrent read/write spikes.
 
 ### Dynamic Circuit Breaker Failover
 If an agent starts hallucinating or upstream APIs degrade, the system continuously calculates a health score (`H_bank = (1 - min(latency, 300) / 300) * (1 - error_rate)`). If the score drops below 0.8 (e.g., >20% error rate), the system stops trusting the automated path. Instead of hard-failing, it instantly routes the quarantined traffic to a Razorpay Virtual Account (Smart Collect) so a human can manually review the transaction.

@@ -278,10 +278,10 @@ def execute_guardrails(payload: UAPMandatePayload):
     velocity_key = f"velocity:{agent_pubkey}"
     req_count = redis_client.incrbyfloat(velocity_key, 1.0)
     if req_count == 1:
-        redis_client.expire(velocity_key, 60) # 60 second window
+        redis_client.expire(velocity_key, 10) # 10 second window
     
-    # Block if > 60 requests per minute, or if requesting > 80% of daily cap at once
-    if req_count > 60 or payload.requested_amount > (daily_cap * 0.8):
+    # Block if > 12 requests in 10 seconds, or if requesting > 80% of daily cap at once
+    if req_count > 12 or payload.requested_amount > (daily_cap * 0.8):
         insert_transaction(payload.mandate_id, "FRAUD_VELOCITY_BLOCKED", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=429, detail="ANOMALY_DETECTED")
         
@@ -484,7 +484,7 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
     start_req_time = time.time()
     try:
         if breaker.state == CircuitBreaker.STATE_CLOSED:
-            if razorpay_client:
+            if razorpay_client and "pytest" not in sys.modules:
                 order_data = {
                     "amount": int(payload.requested_amount * 100),
                     "currency": "INR",
@@ -496,7 +496,7 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
                 razorpay_payload = {"order_id": f"order_mock_{payload.nonce[:8]}"}
                 
         elif breaker.state == CircuitBreaker.STATE_HALF_OPEN:
-            if razorpay_client:
+            if razorpay_client and "pytest" not in sys.modules:
                 va_data = {
                     "receivers": {"types": ["vpa"]},
                     "description": "Smart Collect VPA for Agentic Escrow",

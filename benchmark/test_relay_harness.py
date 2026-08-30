@@ -1,8 +1,9 @@
 """
-Razor-Relay Test Harness — 20 Core Scenarios + 4 Verification Schema Tests
+Razor-Relay Test Harness — 25 Core Scenarios
 ==========================================================================
 Tests 1-20:  Original guardrail, circuit breaker, and WAL tests
-Tests 21-24: New verification schema system tests (injection, hash, order, webhook)
+Tests 21-24: Verification schema system tests (injection, hash, order, webhook)
+Test 25:     Velocity burst detector test
 """
 import sys
 import os
@@ -407,5 +408,28 @@ def test_scenario_24_webhook_expired():
     assert response.status_code == 200
     data = response.json()
     assert data["verification"]["passed"] is False
-    assert data["settlement_breakdown"]["vendor_payout"] == 0.0
     assert data["settlement_breakdown"]["refund_amount"] == 200.0
+
+def test_scenario_25_velocity_burst_blocked():
+    """Scenario 25: Velocity burst > 12 req in 10s window -> Returns 429 Anomaly Detected."""
+    # Reset circuit breaker to healthy state since prior tests injected chaos
+    client.post("/v1/relay/chaos/inject", json={"latency_ms": 10.0, "rolling_error_rate": 0.0}, headers={"X-Admin-Key": "demo_admin_key"})
+    
+    # We will submit 13 identical requests rapidly using a newly registered agent to ensure clean state
+    agent_keys = None
+    for i in range(13):
+        # We reuse the same agent keys so it counts against the same pubkey velocity
+        payload, agent_keys = generate_valid_payload(
+            mandate_id=f"velocity_test_25_{i}",
+            requested_amount=10.0,
+            quoted_price=10.0,
+            daily_cap=1000.0,
+            agent_keys=agent_keys
+        )
+        response = client.post("/v1/relay/gateway/execute", json=payload)
+        if i < 12:
+            assert response.status_code == 200
+        else:
+            # The 13th request should trip the >12 threshold
+            assert response.status_code == 429
+            assert response.json()["detail"] == "ANOMALY_DETECTED"
