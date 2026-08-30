@@ -140,8 +140,6 @@ def _run_demo_traffic():
                 "delegation": {
                     "human_root_hash": "mock_hrh",
                     "agent_pubkey": pub_hex,
-                    "policy_hash": "mock_ph",
-                    "timestamp": int(time.time()),
                     "primary_agent_id": "sim_agent",
                     "sub_agent_id": None,
                     "delegation_depth": 1,
