@@ -28,10 +28,6 @@ if not ADMIN_KEY:
     else:
         raise ValueError("CRITICAL SECURITY ERROR: ADMIN_KEY environment variable is not set. Refusing to start.")
 
-MANDATE_SECRET_KEY = os.getenv("MANDATE_SECRET_KEY")
-if not MANDATE_SECRET_KEY or MANDATE_SECRET_KEY == "default_secret":
-    MANDATE_SECRET_KEY = hashlib.sha256(ADMIN_KEY.encode()).hexdigest()
-
 def verify_admin_key(x_admin_key: str = Header(...)):
     if not hmac.compare_digest(x_admin_key, ADMIN_KEY):
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -172,7 +168,7 @@ def get_canonical_payload(payload_dict: dict) -> bytes:
     # Sort keys for deterministic JSON serialization
     return json.dumps(payload_dict, sort_keys=True, separators=(',', ':')).encode('utf-8')
 
-def verify_ecdsa_signature(payload: UAPMandatePayload) -> bool:
+def verify_ed25519_signature(payload: UAPMandatePayload) -> bool:
     """Verifies Ed25519 signature using the agent's registered public key."""
     try:
         payload_dict = payload.model_dump()
@@ -252,11 +248,11 @@ def execute_guardrails(payload: UAPMandatePayload):
         raise HTTPException(status_code=400, detail="MANDATE_EXPIRED")
         
     # 2. Cryptographic Verification (Ed25519 full canonical payload)
-    if not verify_ecdsa_signature(payload):
+    if not verify_ed25519_signature(payload):
         logger.warning(f"Signature mismatch for mandate {payload.mandate_id}. Enforcing failure.")
         redis_client.incrbyfloat("metrics:attacks_blocked", 1.0)
-        wal.append("SECURITY_INTERVENTION", {"reason": "DELEGATION_CHAIN_INVALID", "mandate_id": payload.mandate_id})
-        raise HTTPException(status_code=401, detail="DELEGATION_CHAIN_INVALID")
+        wal.append("SECURITY_INTERVENTION", {"reason": "INVALID_SIGNATURE", "mandate_id": payload.mandate_id})
+        raise HTTPException(status_code=401, detail="INVALID_SIGNATURE")
 
     # 3. Redis Protection Layer: Replay Protection (Nonce tracking via SETNX sliding locks)
     nonce_key = f"nonce:{payload.nonce}"
@@ -284,8 +280,8 @@ def execute_guardrails(payload: UAPMandatePayload):
     if req_count == 1:
         redis_client.expire(velocity_key, 60) # 60 second window
     
-    # Block if > 15 requests per minute, or if requesting > 80% of daily cap at once
-    if req_count > 15 or payload.requested_amount > (daily_cap * 0.8):
+    # Block if > 60 requests per minute, or if requesting > 80% of daily cap at once
+    if req_count > 60 or payload.requested_amount > (daily_cap * 0.8):
         insert_transaction(payload.mandate_id, "FRAUD_VELOCITY_BLOCKED", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=429, detail="ANOMALY_DETECTED")
         

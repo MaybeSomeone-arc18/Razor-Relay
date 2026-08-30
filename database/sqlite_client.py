@@ -21,8 +21,11 @@ VALID_STATUSES = {
     "REFUNDED",            # Task failed deterministic verification, full refund
     "REJECTED_CEILING",    # Blocked by per-tx or daily spending cap guardrail
     "MANDATE_REVOKED",     # Blocked by human operator revocation command
-    "SIGNATURE_INVALID",   # HMAC verification failed (likely prompt injection)
+    "SIGNATURE_INVALID",   # Verification failed (likely prompt injection)
     "REPLAY_BLOCKED",      # Duplicate nonce detected (replay attack)
+    "ANOMALY_DETECTED",
+    "REJECTED_CAP",
+    "FRAUD_VELOCITY_BLOCKED"
 }
 
 

@@ -20,7 +20,7 @@ When you are explaining the project, break it down into these three simple steps
 
 ### Step 1: Sign (Creating the Contract)
 Instead of API keys, agents use **Mandates**. A Mandate is basically a digital contract that says: *"I authorize up to ₹500 for data cleaning. This expires in 1 hour."*
-The buyer agent cryptographically signs this mandate using a secret key. This proves the contract is authentic and hasn't been tampered with.
+The buyer agent cryptographically signs a strictly canonicalized version of this mandate using its deterministic **Ed25519 asymmetric private key**. This proves the contract is authentic and hasn't been tampered with.
 
 ### Step 2: Execute (Locking the Funds)
 Razor-Relay receives the mandate, verifies the signature, and talks to Razorpay to put an **Authorization Hold** on the funds. The money is now locked in Escrow. Nobody can touch it yet.
@@ -39,9 +39,9 @@ During this project, we fortified the architecture to make it mechanically un-ha
 **The Problem:** LLMs (like Gemini) hallucinate. You can't trust them to make a final decision on releasing money.
 **Our Fix:** We use the AI *only* to figure out what type of task it is (routing). The actual verification is done by deterministic Python code (like comparing two strings). Even if the AI is hacked, it cannot force the money to move.
 
-### B. Bulletproof Cryptography (HMAC Canonicalization)
-**The Problem:** Different programming languages format JSON data differently, which can cause digital signatures to break. Also, attackers might try to modify the spending limits after the contract is signed.
-**Our Fix:** We built a "Canonical Signature" system. We take the entire payload, convert all amounts to strict integers, and hash it perfectly. This means any attempt to tamper with the spending limits or expiry time will instantly invalidate the signature. 
+### B. Bulletproof Asymmetric Cryptography (Ed25519 Canonicalization)
+**The Problem:** Different programming languages format JSON data differently, which can cause digital signatures to break. Also, symmetric keys are dangerous because if an agent knows the key, it can forge mandates.
+**Our Fix:** We built an Asymmetric "Canonical Signature" system. We take the entire payload, convert all amounts to strict 2-decimal strings, sort the keys, and hash it perfectly. The agent signs it with its Ed25519 private key, and the server verifies it against the registered public key. Any attempt to tamper with the payload will instantly invalidate the signature.
 
 ### C. Stopping "Infinite Refund" Race Conditions (Distributed Locks)
 **The Problem:** In a distributed system, if two identical refund requests hit the server at the exact same millisecond, the system might accidentally refund the money twice!
@@ -66,7 +66,7 @@ During this project, we fortified the architecture to make it mechanically un-ha
 > "Razor-Relay is a Zero-Trust Escrow Layer. Agents don't get API keys; they get cryptographic mandates. When an agent hires another agent, Razor-Relay locks the funds via Razorpay. The money is only released when deterministic, mathematical proof of work is provided."
 
 **[1:15 - 2:00] The Demo (Happy Path & Attack)**
-> "Let’s see it live. The buyer locks the funds. The worker delivers the file. Razor-Relay verifies the file hash perfectly and releases the payment. But what if a malicious agent tries a Prompt Injection attack to steal the money? As you can see, our benchmark of 134 adversarial tests catches it instantly. The AI never touches the actual money switch—only strict Python code does."
+> "Let’s see it live. The buyer locks the funds. The worker delivers the file. Razor-Relay verifies the file hash perfectly and releases the payment. But what if a malicious agent tries a Prompt Injection attack to steal the money? As you can see, our benchmark of 24 core adversarial tests catches it instantly. The AI never touches the actual money switch—only strict Python code does."
 
 **[2:00 - 2:30] The Resilience (Circuit Breaker)**
 > "Finally, we built this for enterprise resilience. If the primary payment route fails, our live-telemetry Circuit Breaker automatically falls back to a secondary method. Razor-Relay isn't just a payment gateway; it's the missing trust layer for the autonomous web."

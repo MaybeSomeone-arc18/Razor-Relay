@@ -168,12 +168,12 @@ def test_scenario_7_expired_mandate():
     assert response.json()["detail"] == "MANDATE_EXPIRED"
 
 def test_scenario_8_invalid_signature():
-    """Scenario 8: Invalid Merkle chain signature -> Returns 401 Unauthorized (DELEGATION_CHAIN_INVALID)."""
+    """Scenario 8: Invalid Merkle chain signature -> Returns 401 Unauthorized (INVALID_SIGNATURE)."""
     invalid_hex = "0" * 128
     payload, agent_keys = generate_valid_payload(sign=invalid_hex)
     response = client.post("/v1/relay/gateway/execute", json=payload)
     assert response.status_code == 401
-    assert response.json()["detail"] == "DELEGATION_CHAIN_INVALID"
+    assert response.json()["detail"] == "INVALID_SIGNATURE"
 
 def test_scenario_9_delegation_depth():
     """Scenario 9: Delegation depth exceeding cap (>2) -> Fails validation."""
