@@ -145,7 +145,8 @@ def _run_demo_traffic():
     while True:
         try:
             roll = random.random()
-            if roll < 0.7:
+            if roll < 0.45:
+                # ~45%: HAPPY PATH
                 amount = round(random.uniform(50, 5000), 2)
                 p = new_payload(amount)
                 res = requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
@@ -161,13 +162,46 @@ def _run_demo_traffic():
                                          "scope": "data_delivery", "proof_artifacts": artifacts},
                         "amount_in_escrow": amount,
                     }, headers=admin, timeout=4)
-            elif roll < 0.88:
+            elif roll < 0.57:
+                # ~12%: amount 11000-25000 -> REJECTED_CEILING
                 requests.post(f"{base}/v1/relay/gateway/execute",
                               json=new_payload(round(random.uniform(11000, 25000), 2)), timeout=4)
-            else:
+            elif roll < 0.67:
+                # ~10%: velocity burst
                 for _ in range(14):
                     requests.post(f"{base}/v1/relay/gateway/execute",
                                   json=new_payload(round(random.uniform(50, 400), 2)), timeout=3)
+            elif roll < 0.75:
+                # ~8%: expired mandate
+                amount = round(random.uniform(50, 500), 2)
+                p = new_payload(amount)
+                p["expiry"] = int(time.time()) - 1000
+                p["signature"] = sign(p)
+                requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
+            elif roll < 0.83:
+                # ~8%: invalid signature
+                amount = round(random.uniform(50, 500), 2)
+                p = new_payload(amount)
+                p["signature"] = "bad_signature"
+                requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
+            elif roll < 0.90:
+                # ~7%: replay
+                amount = round(random.uniform(50, 500), 2)
+                p = new_payload(amount)
+                requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
+                requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
+            elif roll < 0.95:
+                # ~5%: revoke
+                amount = round(random.uniform(50, 500), 2)
+                p = new_payload(amount)
+                requests.post(f"{base}/v1/relay/mandate/revoke", params={"mandate_id": p["mandate_id"]}, headers=admin, timeout=4)
+                requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
+            else:
+                # ~5%: slippage
+                p = new_payload(1000.0)
+                p["quoted_price"] = 500.0
+                p["signature"] = sign(p)
+                requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
         except Exception:
             pass
         time.sleep(random.uniform(2.0, 4.0))
@@ -349,6 +383,7 @@ def execute_guardrails(payload: UAPMandatePayload):
 
     # 1. Temporal Expiration
     if time.time() > payload.expiry:
+        insert_transaction(payload.mandate_id, "MANDATE_EXPIRED", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=400, detail="MANDATE_EXPIRED")
         
     # 2. Cryptographic Verification (Ed25519 full canonical payload)
@@ -356,16 +391,19 @@ def execute_guardrails(payload: UAPMandatePayload):
         logger.warning(f"Signature mismatch for mandate {payload.mandate_id}. Enforcing failure.")
         redis_client.incrbyfloat("metrics:attacks_blocked", 1.0)
         wal.append("SECURITY_INTERVENTION", {"reason": "INVALID_SIGNATURE", "mandate_id": payload.mandate_id})
+        insert_transaction(payload.mandate_id, "SIGNATURE_INVALID", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=401, detail="INVALID_SIGNATURE")
 
     # 3. Redis Protection Layer: Replay Protection (Nonce tracking via SETNX sliding locks)
     nonce_key = f"nonce:{payload.nonce}"
     nonce_ttl = max(1, payload.expiry - int(time.time()))
     if not redis_client.setnx_ex(nonce_key, "1", expire_seconds=nonce_ttl):
+        insert_transaction(payload.mandate_id, "REPLAY_BLOCKED", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=409, detail="REPLAY_ATTACK_BLOCKED")
         
     # 4. Redis Protection Layer: Revocation Check
     if redis_client.get(f"revoked:{payload.mandate_id}"):
+        insert_transaction(payload.mandate_id, "MANDATE_REVOKED", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=403, detail="MANDATE_REVOKED")
         
     # 4.5. Server-side limits fetching
@@ -397,6 +435,7 @@ def execute_guardrails(payload: UAPMandatePayload):
     # 6. Price slippage (Server-side enforced)
     max_allowed_price = payload.quoted_price * (1 + (slippage_percent / 100))
     if payload.requested_amount > max_allowed_price:
+        insert_transaction(payload.mandate_id, "REJECTED_SLIPPAGE", payload.requested_amount, schema_type=payload.scope, agent_ip="127.0.0.1")
         raise HTTPException(status_code=400, detail="PRICE_SLIPPAGE_DETECTED")
         
     # 7. 24-hour aggregate spend limits - atomic check keyed on agent_pubkey
