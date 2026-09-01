@@ -319,6 +319,8 @@ def verify_ed25519_signature(payload: UAPMandatePayload) -> bool:
         return False
 
 # --- Circuit Breaker Switch Failover ---
+LATENCY_CEILING_MS = 2000.0
+
 class CircuitBreaker:
     STATE_CLOSED = "CLOSED"       # UPI direct
     STATE_HALF_OPEN = "HALF_OPEN" # 5% probe / 95% Smart Collect VPA
@@ -359,7 +361,7 @@ class CircuitBreaker:
         
     def evaluate_state(self):
         # Calculates switch health score H_bank
-        h_bank = (1 - min(self.latency, 300) / 300) * (1 - self.error_rate)
+        h_bank = (1 - min(self.latency, LATENCY_CEILING_MS) / LATENCY_CEILING_MS) * (1 - self.error_rate)
         
         if h_bank < 0.5:
             new_state = self.STATE_OPEN
@@ -491,7 +493,7 @@ def register_agent(req: AgentRegistrationRequest, _=Depends(verify_admin_key)):
 def health_check():
     """Health check endpoint reflecting production readiness."""
     uptime = time.time() - breaker.start_time
-    h_bank = (1 - min(breaker.latency, 300) / 300) * (1 - breaker.error_rate)
+    h_bank = (1 - min(breaker.latency, LATENCY_CEILING_MS) / LATENCY_CEILING_MS) * (1 - breaker.error_rate)
     return {
         "status": "operational",
         "circuit_state": breaker.state,
