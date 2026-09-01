@@ -7,3 +7,6 @@ state_wal.log
 
 database/relay.db*
 database/creditcard.csv
+*.orig
+*.rej
+*.patch

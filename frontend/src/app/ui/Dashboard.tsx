@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'telemetry' | 'logs' | 'policies' | 'keys' | 'profile' | 'settings'>('telemetry');
   const [open, setOpen] = useState(false);
   const [isMac, setIsMac] = useState(true);
-  const [apiKey, setApiKey] = useState('rzp_live_super_secret_key_12345');
+  const [apiKey, setApiKey] = useState('rzp_test_placeholder_key');
 
   const generateApiKey = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -162,14 +162,11 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('razorpay_theme');
-    if (saved === 'light') {
-      setTheme('light');
-      document.documentElement.classList.remove('dark');
-    } else {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
+    if (typeof window !== 'undefined') {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(isDark ? 'dark' : 'light');
     }
+
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'razorpay_theme') {
         const newTheme = e.newValue || 'dark';
@@ -248,31 +245,31 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#02042B] text-slate-900 dark:text-neutral-200 font-sans selection:bg-emerald-500/30 dark:selection:bg-[#00FF88]/30">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30">
       {/* Top Navbar */}
-      <nav className="h-16 bg-white dark:bg-[#0B192C]/80 backdrop-blur-md border-b border-slate-200 dark:border-blue-500/20 flex items-center justify-between px-6 sticky top-0 z-40">
+      <nav className="h-16 bg-card/80 backdrop-blur-md border-b border-border flex items-center justify-between px-6 sticky top-0 z-40">
         <div className="flex items-center gap-6">
-          <a href="/" className="font-serif text-xl tracking-wide text-slate-900 dark:text-white hover:text-emerald-600 dark:text-[#00FF88] transition-colors">
+          <a href="/" className="font-sans font-bold text-xl tracking-wide text-foreground hover:text-primary transition-colors">
             RAZOR-RELAY
           </a>
-          <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-100 dark:bg-[#0F172A] border border-slate-200 dark:border-blue-500/20 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+          <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-muted border border-border text-[10px] font-mono text-muted-foreground">
             DASHBOARD
           </span>
         </div>
         <div className="flex items-center gap-4">
           <button
             onClick={() => setOpen(true)}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-[#0F172A] border border-slate-200 dark:border-blue-500/20 rounded-md text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:border-slate-300 dark:border-blue-500/30 transition-colors"
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-muted border border-border rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-border transition-colors"
           >
             <Search className="w-4 h-4" />
             <span>Search...</span>
-            <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 rounded bg-slate-200 dark:bg-neutral-800 text-slate-500 dark:text-slate-400 font-mono text-[10px]">
+            <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 rounded bg-slate-200 dark:bg-neutral-800 text-muted-foreground font-mono text-[10px]">
               {isMac ? <><span className="text-xs">⌘</span>K</> : <><span className="text-xs">Ctrl</span> + K</>}
             </kbd>
           </button>
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-neutral-800 transition-colors focus:outline-none"
+            className="p-2 rounded-full hover:bg-muted transition-colors focus:outline-none"
           >
             {theme === 'dark' ? (
               <Sun className="w-5 h-5 text-yellow-500" />
@@ -289,50 +286,50 @@ export default function DashboardPage() {
         {/* Sidebar */}
         <aside className="lg:col-span-3 space-y-6">
           <div className="space-y-1">
-            <h3 className="text-xs font-mono text-slate-400 dark:text-slate-500 px-3 uppercase tracking-wider mb-2">Overview</h3>
+            <h3 className="text-xs font-mono text-muted-foreground px-3 uppercase tracking-wider mb-2">Overview</h3>
             <button
               onClick={() => setActiveTab('telemetry')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'telemetry' ? 'bg-slate-100 dark:bg-[#0F172A] text-slate-900 dark:text-white font-medium border border-slate-200 dark:border-blue-500/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-100/50 dark:bg-[#0F172A]/50'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'telemetry' ? 'bg-muted text-foreground font-medium border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
             >
-              <Activity className={`w-4 h-4 ${activeTab === 'telemetry' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
+              <Activity className={`w-4 h-4 ${activeTab === 'telemetry' ? 'text-primary' : ''}`} />
               Live Telemetry
             </button>
             <button
               onClick={() => setActiveTab('logs')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'logs' ? 'bg-slate-100 dark:bg-[#0F172A] text-slate-900 dark:text-white font-medium border border-slate-200 dark:border-blue-500/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-100/50 dark:bg-[#0F172A]/50'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'logs' ? 'bg-muted text-foreground font-medium border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
             >
-              <FileText className={`w-4 h-4 ${activeTab === 'logs' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
+              <FileText className={`w-4 h-4 ${activeTab === 'logs' ? 'text-primary' : ''}`} />
               Escrow Logs
             </button>
             <button
               onClick={() => setActiveTab('policies')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'policies' ? 'bg-slate-100 dark:bg-[#0F172A] text-slate-900 dark:text-white font-medium border border-slate-200 dark:border-blue-500/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-100/50 dark:bg-[#0F172A]/50'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'policies' ? 'bg-muted text-foreground font-medium border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
             >
-              <Shield className={`w-4 h-4 ${activeTab === 'policies' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
+              <Shield className={`w-4 h-4 ${activeTab === 'policies' ? 'text-primary' : ''}`} />
               Security Policies
             </button>
           </div>
-          <div className="space-y-1 pt-4 border-t border-slate-200 dark:border-blue-500/20/50">
-            <h3 className="text-xs font-mono text-slate-400 dark:text-slate-500 px-3 uppercase tracking-wider mb-2">Settings</h3>
+          <div className="space-y-1 pt-4 border-t border-border/50">
+            <h3 className="text-xs font-mono text-muted-foreground px-3 uppercase tracking-wider mb-2">Settings</h3>
             <button
               onClick={() => setActiveTab('keys')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'keys' ? 'bg-slate-100 dark:bg-[#0F172A] text-slate-900 dark:text-white font-medium border border-slate-200 dark:border-blue-500/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-100/50 dark:bg-[#0F172A]/50'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'keys' ? 'bg-muted text-foreground font-medium border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
             >
-              <Code2 className={`w-4 h-4 ${activeTab === 'keys' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
+              <Code2 className={`w-4 h-4 ${activeTab === 'keys' ? 'text-primary' : ''}`} />
               API Keys
             </button>
             <button
               onClick={() => setActiveTab('profile')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'profile' ? 'bg-slate-100 dark:bg-[#0F172A] text-slate-900 dark:text-white font-medium border border-slate-200 dark:border-blue-500/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-100/50 dark:bg-[#0F172A]/50'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'profile' ? 'bg-muted text-foreground font-medium border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
             >
-              <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
+              <User className={`w-4 h-4 ${activeTab === 'profile' ? 'text-primary' : ''}`} />
               Profile
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-slate-100 dark:bg-[#0F172A] text-slate-900 dark:text-white font-medium border border-slate-200 dark:border-blue-500/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-100/50 dark:bg-[#0F172A]/50'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-muted text-foreground font-medium border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
             >
-              <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-emerald-600 dark:text-[#00FF88]' : ''}`} />
+              <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-primary' : ''}`} />
               System Config
             </button>
           </div>
@@ -344,39 +341,39 @@ export default function DashboardPage() {
             <>
               {/* Metrics Row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                <div className="bg-card border border-border rounded-xl p-5 shadow-lg relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-[#00FF88]/5 rounded-full blur-[40px] -mr-10 -mt-10 pointer-events-none" />
                   <div className="flex items-center justify-between mb-4 relative z-10">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Volume</span>
-                    <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-[#00FF88] bg-emerald-100 dark:bg-[#00FF88]/10 px-2 py-0.5 rounded-full">
+                    <span className="text-sm font-medium text-muted-foreground">Total Volume</span>
+                    <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                       <ArrowUpRight className="w-3 h-3" /> +12%
                     </span>
                   </div>
-                  <div className="text-3xl font-mono text-slate-900 dark:text-white relative z-10">
+                  <div className="text-3xl font-mono text-foreground relative z-10">
                     ₹{volume.toLocaleString()}
                   </div>
                 </div>
-                <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                <div className="bg-card border border-border rounded-xl p-5 shadow-lg relative overflow-hidden">
                   <div className="flex items-center justify-between mb-4 relative z-10">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Active Requests</span>
+                    <span className="text-sm font-medium text-muted-foreground">Active Requests</span>
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
                     </span>
                   </div>
-                  <div className="text-3xl font-mono text-slate-900 dark:text-white relative z-10">
-                    {activeRequests} <span className="text-sm text-slate-400 dark:text-slate-500">/sec</span>
+                  <div className="text-3xl font-mono text-foreground relative z-10">
+                    {activeRequests} <span className="text-sm text-muted-foreground">/sec</span>
                   </div>
                 </div>
-                <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                <div className="bg-card border border-border rounded-xl p-5 shadow-lg relative overflow-hidden">
                   <div className="flex items-center justify-between mb-4 relative z-10">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Security Score</span>
-                    <Shield className="w-4 h-4 text-emerald-600 dark:text-[#00FF88]" />
+                    <span className="text-sm font-medium text-muted-foreground">Security Score</span>
+                    <Shield className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="text-3xl font-mono text-slate-900 dark:text-white relative z-10">
+                  <div className="text-3xl font-mono text-foreground relative z-10">
                     {metrics.merchant_uptime_percent.toFixed(1)}%
                   </div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-mono">{metrics.fraud_attacks_blocked} ATTACKS BLOCKED</div>
+                  <div className="text-xs text-muted-foreground mt-2 font-mono">{metrics.fraud_attacks_blocked} ATTACKS BLOCKED</div>
                 </div>
               </div>
 
@@ -408,7 +405,7 @@ export default function DashboardPage() {
                         id="invalidSig"
                         checked={attackInvalidSig}
                         onChange={(e) => setAttackInvalidSig(e.target.checked)}
-                        className="rounded border-slate-700 bg-slate-950 text-red-500 focus:ring-red-500"
+                        className="rounded border-border bg-muted text-red-500 focus:ring-red-500"
                       />
                       <label htmlFor="invalidSig" className="text-xs font-mono text-slate-400 cursor-pointer">Inject Invalid Cryptographic Signature</label>
                     </div>
@@ -430,22 +427,22 @@ export default function DashboardPage() {
               </div>
 
               {/* Real-time Data Table */}
-              <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl overflow-hidden shadow-lg">
-                <div className="p-5 border-b border-slate-200 dark:border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
+              <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
+                <div className="p-5 border-b border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <h3 className="font-medium text-foreground flex items-center gap-2">
                     <Server className="w-4 h-4 text-blue-400" />
                     Live Escrow Logs
                   </h3>
-                  <div className="flex bg-slate-100 dark:bg-[#0F172A] p-1 rounded-lg border border-slate-200 dark:border-blue-500/20">
-                    <button onClick={() => setLogFilter('ALL')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'ALL' ? 'bg-white dark:bg-blue-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>ALL</button>
-                    <button onClick={() => setLogFilter('ANOMALIES')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'ANOMALIES' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>ANOMALIES</button>
-                    <button onClick={() => setLogFilter('SETTLED')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'SETTLED' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>SETTLED</button>
+                  <div className="flex bg-muted p-1 rounded-lg border border-border">
+                    <button onClick={() => setLogFilter('ALL')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'ALL' ? 'bg-white dark:bg-blue-600 text-foreground shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-foreground'}`}>ALL</button>
+                    <button onClick={() => setLogFilter('ANOMALIES')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'ANOMALIES' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-foreground'}`}>ANOMALIES</button>
+                    <button onClick={() => setLogFilter('SETTLED')} className={`text-[10px] font-mono px-3 py-1 rounded-md transition-colors ${logFilter === 'SETTLED' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-foreground'}`}>SETTLED</button>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="bg-slate-100/50 dark:bg-[#0F172A]/50 text-xs font-mono text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-blue-500/20">
+                      <tr className="bg-muted/50 text-xs font-mono text-muted-foreground border-b border-border">
                         <th className="p-4 font-normal">TIMESTAMP</th>
                         <th className="p-4 font-normal">MANDATE ID</th>
                         <th className="p-4 font-normal">SCHEMA</th>
@@ -471,7 +468,7 @@ export default function DashboardPage() {
                           );
                         }
                         return filteredLogs.map((row, i) => {
-                          let statusColor = "text-emerald-600 dark:text-[#00FF88]";
+                          let statusColor = "text-primary";
                           if (row.status.includes("INVALID") || row.status.includes("REJECTED") || row.status.includes("REVOKED") || row.status.includes("BLOCKED")) {
                             statusColor = "text-red-400";
                           } else if (row.status === "ESCROW_LOCKED") {
@@ -483,17 +480,17 @@ export default function DashboardPage() {
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: i * 0.05 }}
-                              className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors"
+                              className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                             >
-                              <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time_ago}</td>
-                              <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.mandate_id}</td>
-                              <td className="p-4 text-slate-500 dark:text-slate-400">{row.schema_type}</td>
+                              <td className="p-4 text-muted-foreground font-mono text-xs">{row.time_ago}</td>
+                              <td className="p-4 font-mono text-muted-foreground">{row.mandate_id}</td>
+                              <td className="p-4 text-muted-foreground">{row.schema_type}</td>
                               <td className="p-4">
                                 <span className={`text-xs font-mono px-2 py-0.5 rounded border border-current ${statusColor} bg-current/[0.05]`}>
                                   {row.status}
                                 </span>
                               </td>
-                              <td className="p-4 text-right font-mono text-slate-900 dark:text-white">₹{row.amount}</td>
+                              <td className="p-4 text-right font-mono text-foreground">₹{row.amount}</td>
                             </motion.tr>
                           );
                         });
@@ -506,26 +503,26 @@ export default function DashboardPage() {
           )}
 
           {activeTab === 'logs' && (
-            <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl overflow-hidden shadow-lg min-h-[500px]">
-              <div className="p-5 border-b border-slate-200 dark:border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50 dark:bg-[#0F172A]/30">
+            <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg min-h-[500px]">
+              <div className="p-5 border-b border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-muted/30">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
-                  <h3 className="font-medium text-slate-900 dark:text-white flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-emerald-600 dark:text-[#00FF88]" />
+                  <h3 className="font-medium text-foreground flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
                     Audit Logs
                   </h3>
                   <div className="relative">
-                    <Search className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input type="text" placeholder="Search mandates..." className="bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 text-xs rounded-md pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#00FF88] text-slate-900 dark:text-white w-full sm:w-64" />
+                    <Search className="w-3 h-3 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input type="text" placeholder="Search mandates..." className="bg-muted border border-border text-xs rounded-md pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#00FF88] text-foreground w-full sm:w-64" />
                   </div>
                 </div>
-                <button onClick={exportLogsCSV} className="text-xs font-mono bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 px-3 py-1.5 rounded text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white transition-colors">
+                <button onClick={exportLogsCSV} className="text-xs font-mono bg-muted border border-border px-3 py-1.5 rounded text-muted-foreground hover:text-foreground transition-colors">
                   EXPORT CSV
                 </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-100/50 dark:bg-[#0F172A]/50 text-xs font-mono text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-blue-500/20">
+                    <tr className="bg-muted/50 text-xs font-mono text-muted-foreground border-b border-border">
                       <th className="p-4 font-normal">TIMESTAMP</th>
                       <th className="p-4 font-normal">MANDATE ID</th>
                       <th className="p-4 font-normal">AGENT IP</th>
@@ -535,23 +532,23 @@ export default function DashboardPage() {
                   </thead>
                   <tbody className="text-sm">
                     {logs.map((row, i) => {
-                      let statusColor = "text-emerald-600 dark:text-[#00FF88]";
+                      let statusColor = "text-primary";
                       if (row.status.includes("INVALID") || row.status.includes("REJECTED") || row.status.includes("REVOKED") || row.status.includes("BLOCKED")) {
                         statusColor = "text-red-400";
                       } else if (row.status === "ESCROW_LOCKED") {
                         statusColor = "text-blue-400";
                       }
                       return (
-                        <tr key={row.id} className="border-b border-slate-200 dark:border-blue-500/20/50 hover:bg-slate-50 dark:bg-[#0F172A]/30 transition-colors">
-                          <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">{row.time_ago}</td>
-                          <td className="p-4 font-mono text-slate-600 dark:text-slate-300">{row.mandate_id}</td>
-                          <td className="p-4 font-mono text-slate-400 dark:text-slate-500 text-xs">{row.agent_ip}</td>
+                        <tr key={row.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                          <td className="p-4 text-muted-foreground font-mono text-xs">{row.time_ago}</td>
+                          <td className="p-4 font-mono text-muted-foreground">{row.mandate_id}</td>
+                          <td className="p-4 font-mono text-muted-foreground text-xs">{row.agent_ip}</td>
                           <td className="p-4">
                             <span className={`text-xs font-mono px-2 py-0.5 rounded border border-current ${statusColor} bg-current/[0.05]`}>
                               {row.status}
                             </span>
                           </td>
-                          <td className="p-4 text-right font-mono text-slate-900 dark:text-white">₹{row.fee.toFixed(2)}</td>
+                          <td className="p-4 text-right font-mono text-foreground">₹{row.fee.toFixed(2)}</td>
                         </tr>
                       );
                     })}
@@ -563,46 +560,46 @@ export default function DashboardPage() {
 
           {activeTab === 'policies' && (
             <div className="space-y-4">
-              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-6">Active Security Modules</h2>
-              <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-6 shadow-lg flex flex-col sm:flex-row items-start justify-between gap-4">
+              <h2 className="text-lg font-medium text-foreground mb-6">Active Security Modules</h2>
+              <div className="bg-card border border-border rounded-xl p-6 shadow-lg flex flex-col sm:flex-row items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-slate-900 dark:text-white font-medium flex items-center gap-2 mb-1">
-                    <Shield className="w-4 h-4 text-emerald-600 dark:text-[#00FF88]" />
+                  <h3 className="text-foreground font-medium flex items-center gap-2 mb-1">
+                    <Shield className="w-4 h-4 text-primary" />
                     Zero-Vibe Verification
                   </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+                  <p className="text-sm text-muted-foreground max-w-2xl">
                     Strict deterministic execution. AI agents are restricted to schema routing only. All cryptographic proofs and logic boundaries are verified purely in Python to eliminate Prompt Injection exploits.
                   </p>
                 </div>
-                <div className="bg-emerald-100 dark:bg-[#00FF88]/10 text-emerald-600 dark:text-[#00FF88] border border-emerald-200 dark:border-[#00FF88]/20 px-3 py-1 rounded-full text-xs font-mono font-medium">
+                <div className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-mono font-medium">
                   ENFORCED
                 </div>
               </div>
-              <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-6 shadow-lg flex flex-col sm:flex-row items-start justify-between gap-4">
+              <div className="bg-card border border-border rounded-xl p-6 shadow-lg flex flex-col sm:flex-row items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-slate-900 dark:text-white font-medium flex items-center gap-2 mb-1">
-                    <Code2 className="w-4 h-4 text-emerald-600 dark:text-[#00FF88]" />
+                  <h3 className="text-foreground font-medium flex items-center gap-2 mb-1">
+                    <Code2 className="w-4 h-4 text-primary" />
                     HMAC Canonical Signatures
                   </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+                  <p className="text-sm text-muted-foreground max-w-2xl">
                     All mandate payloads are recursively serialized into cross-language canonical JSON before signing. This prevents float-to-integer deserialization attacks and cryptographically binds the exact spending limits.
                   </p>
                 </div>
-                <div className="bg-emerald-100 dark:bg-[#00FF88]/10 text-emerald-600 dark:text-[#00FF88] border border-emerald-200 dark:border-[#00FF88]/20 px-3 py-1 rounded-full text-xs font-mono font-medium">
+                <div className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-mono font-medium">
                   ENFORCED
                 </div>
               </div>
-              <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-6 shadow-lg flex flex-col sm:flex-row items-start justify-between gap-4">
+              <div className="bg-card border border-border rounded-xl p-6 shadow-lg flex flex-col sm:flex-row items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-slate-900 dark:text-white font-medium flex items-center gap-2 mb-1">
-                    <Zap className="w-4 h-4 text-emerald-600 dark:text-[#00FF88]" />
+                  <h3 className="text-foreground font-medium flex items-center gap-2 mb-1">
+                    <Zap className="w-4 h-4 text-primary" />
                     Live Telemetry Circuit Breaker
                   </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+                  <p className="text-sm text-muted-foreground max-w-2xl">
                     Actively monitors Razorpay API health via Redis. Automatically fails over to Smart Collect Virtual Accounts if the primary UPI Direct gateway latency spikes or errors exceed 5%.
                   </p>
                 </div>
-                <div className="bg-emerald-100 dark:bg-[#00FF88]/10 text-emerald-600 dark:text-[#00FF88] border border-emerald-200 dark:border-[#00FF88]/20 px-3 py-1 rounded-full text-xs font-mono font-medium">
+                <div className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-mono font-medium">
                   ACTIVE
                 </div>
               </div>
@@ -610,30 +607,30 @@ export default function DashboardPage() {
           )}
 
           {activeTab === 'keys' && (
-            <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-8 shadow-lg max-w-2xl">
-              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2">API Keys</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">
+            <div className="bg-card border border-border rounded-xl p-8 shadow-lg max-w-2xl">
+              <h2 className="text-lg font-medium text-foreground mb-2">API Keys</h2>
+              <p className="text-sm text-muted-foreground mb-8">
                 Manage your Razor-Relay symmetric keys. These keys are used to authenticate your agent fleet when submitting signed mandates.
               </p>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Production Admin Key</label>
+                  <label className="block text-xs font-mono text-muted-foreground mb-2 uppercase tracking-wider">Production Admin Key</label>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <input
                       type="password"
                       value={apiKey}
                       disabled
-                      className="flex-1 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white font-mono text-sm opacity-50"
+                      className="flex-1 bg-muted border border-border rounded-lg px-4 py-2 text-foreground font-mono text-sm opacity-50"
                     />
-                    <button className="px-4 py-2 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:text-white rounded-lg text-sm font-medium transition-colors">
+                    <button className="px-4 py-2 bg-muted border border-border text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition-colors">
                       Copy
                     </button>
                   </div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     Never commit this key to GitHub. Use it to instantiate the RelayClient in your agent's environment.
                   </p>
                 </div>
-                <div className="pt-6 border-t border-slate-200 dark:border-blue-500/20/50">
+                <div className="pt-6 border-t border-border/50">
                   <button onClick={generateApiKey} className="px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-sm font-medium transition-colors">
                     Rotate Keys
                   </button>
@@ -643,60 +640,60 @@ export default function DashboardPage() {
           )}
 
           {activeTab === 'profile' && (
-            <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-8 shadow-lg max-w-2xl">
-              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-6">User Profile</h2>
+            <div className="bg-card border border-border rounded-xl p-8 shadow-lg max-w-2xl">
+              <h2 className="text-lg font-medium text-foreground mb-6">User Profile</h2>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Name</label>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">Admin User</p>
+                  <label className="block text-xs font-mono text-muted-foreground mb-2 uppercase tracking-wider">Name</label>
+                  <p className="text-sm font-medium text-foreground">Admin User</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Email</label>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">admin@razor-relay.com</p>
+                  <label className="block text-xs font-mono text-muted-foreground mb-2 uppercase tracking-wider">Email</label>
+                  <p className="text-sm font-medium text-foreground">admin@razor-relay.com</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Role</label>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 px-3 py-1 rounded-full inline-block">Super Administrator</p>
+                  <label className="block text-xs font-mono text-muted-foreground mb-2 uppercase tracking-wider">Role</label>
+                  <p className="text-sm font-medium text-foreground bg-blue-500/10 text-blue-500 border border-blue-500/20 px-3 py-1 rounded-full inline-block">Super Administrator</p>
                 </div>
               </div>
             </div>
           )}
 
           {activeTab === 'settings' && (
-            <div className="bg-white dark:bg-[#0B192C] border border-slate-200 dark:border-blue-500/20 rounded-xl p-8 shadow-lg max-w-2xl">
-              <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-6">System Configuration</h2>
+            <div className="bg-card border border-border rounded-xl p-8 shadow-lg max-w-2xl">
+              <h2 className="text-lg font-medium text-foreground mb-6">System Configuration</h2>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Environment</label>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">Production (Live)</p>
+                  <label className="block text-xs font-mono text-muted-foreground mb-2 uppercase tracking-wider">Environment</label>
+                  <p className="text-sm font-medium text-foreground">Testing (Test Mode)</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Webhook URL</label>
+                  <label className="block text-xs font-mono text-muted-foreground mb-2 uppercase tracking-wider">Webhook URL</label>
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <input type="text" defaultValue="https://api.razor-relay.com/webhook" className="flex-1 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500/60" />
+                    <input type="text" defaultValue="https://api.razor-relay.com/webhook" className="flex-1 bg-muted border border-border rounded-lg px-4 py-2 text-foreground text-sm outline-none focus:border-blue-500/60" />
                     <button onClick={testWebhook} className="px-4 py-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
                       Test Link
                     </button>
                   </div>
                   {webhookStatus && (
-                    <p className={`text-xs mt-2 font-mono ${webhookStatus.includes('200') ? 'text-emerald-500 dark:text-[#00FF88]' : 'text-slate-500 dark:text-slate-400'}`}>
+                    <p className={`text-xs mt-2 font-mono ${webhookStatus.includes('200') ? 'text-primary' : 'text-muted-foreground'}`}>
                       {webhookStatus}
                     </p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">Failover Threshold</label>
+                  <label className="block text-xs font-mono text-muted-foreground mb-2 uppercase tracking-wider">Failover Threshold</label>
                   <div className="flex items-center gap-2">
-                    <input type="number" value={failoverThreshold} onChange={(e) => setFailoverThreshold(e.target.value)} className="w-24 bg-slate-100 dark:bg-[#0F172A] border border-slate-300 dark:border-blue-500/30 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm outline-none focus:border-blue-500/60" />
+                    <input type="number" value={failoverThreshold} onChange={(e) => setFailoverThreshold(e.target.value)} className="w-24 bg-muted border border-border rounded-lg px-4 py-2 text-foreground text-sm outline-none focus:border-blue-500/60" />
                     <span className="text-sm text-slate-500">%</span>
                   </div>
                 </div>
-                <div className="pt-4 border-t border-slate-200 dark:border-blue-500/20/50 flex items-center gap-4">
+                <div className="pt-4 border-t border-border/50 flex items-center gap-4">
                   <button onClick={saveSettings} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all">
                     Save Changes
                   </button>
                   {saveSettingsStatus && (
-                    <p className={`text-xs font-mono ${saveSettingsStatus.includes('saved') ? 'text-emerald-500 dark:text-[#00FF88]' : 'text-slate-500 dark:text-slate-400'}`}>
+                    <p className={`text-xs font-mono ${saveSettingsStatus.includes('saved') ? 'text-primary' : 'text-muted-foreground'}`}>
                       {saveSettingsStatus}
                     </p>
                   )}
