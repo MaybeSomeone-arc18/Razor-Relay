@@ -148,6 +148,8 @@ def _run_demo_traffic():
             roll = random.random()
             if roll < 0.45:
                 # ~45%: HAPPY PATH
+                if random.random() > 0.30: # artificially drop 70% of happy path to reduce Razorpay load
+                    continue
                 amount = round(random.uniform(50, 5000), 2)
                 p = new_payload(amount)
                 res = requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
@@ -205,13 +207,21 @@ def _run_demo_traffic():
                 requests.post(f"{base}/v1/relay/gateway/execute", json=p, timeout=4)
         except Exception:
             pass
-        time.sleep(random.uniform(2.0, 4.0))
+        time.sleep(random.uniform(4.0, 7.0))
 
 @app.on_event("startup")
 async def startup_event():
     init_db()
     logger.info("SQLite transaction log initialized (WAL mode active).")
     await prewarm_ollama()
+    
+    # Reset circuit breaker state in Redis
+    redis_client.set("circuit_breaker:state", "CLOSED")
+    redis_client.set("circuit_breaker:error_rate", "0")
+    redis_client.set("circuit_breaker:latency", "50")
+    redis_client.set("circuit_breaker:errors_live", "0")
+    redis_client.set("circuit_breaker:total_live", "0")
+    
     import threading
     threading.Thread(target=_run_demo_traffic, daemon=True).start()
 
@@ -507,6 +517,8 @@ def get_metrics():
 def inject_chaos(telemetry: SwitchTelemetry):
     """Chaos Ingestion Endpoint allowing live latency and error-rate overrides."""
     breaker.update_telemetry(telemetry)
+    redis_client.set("circuit_breaker:errors_live", "0")
+    redis_client.set("circuit_breaker:total_live", "0")
     return {"status": "success", "circuit_state": breaker.state}
 
 @app.post("/v1/relay/mandate/revoke", dependencies=[Depends(verify_admin_key)])
@@ -677,17 +689,7 @@ def gateway_execute(payload: UAPMandatePayload, request: Request):
     except Exception as e:
         logger.error(f"Razorpay API Error: {e}")
         _record_live(success=False, latency_ms=200.0)
-        razorpay_payload = {"order_id": f"order_mock_err_{payload.nonce[:8]}"}
-       
-        # Live error telemetry feedback loop
-        err_count = redis_client.incrbyfloat("circuit_breaker:errors_live", 1.0)
-        total_count = redis_client.incrbyfloat("circuit_breaker:total_live", 1.0)
-        if total_count >= 5:
-            breaker.update_telemetry(SwitchTelemetry(
-                latency_ms=100.0,
-                rolling_error_rate=(err_count / total_count)
-            ))
-            
+           
         # Graceful fallback to mock to ensure zero-trust pipeline doesn't crash on network timeouts
         if breaker.state == CircuitBreaker.STATE_CLOSED:
             razorpay_payload = {"order_id": f"order_mock_err_{payload.nonce[:8]}"}

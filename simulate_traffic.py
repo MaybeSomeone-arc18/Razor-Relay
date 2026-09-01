@@ -68,7 +68,7 @@ def run_simulation():
     while True:
         simulate_request()
         # Random sleep between 1 to 4 seconds to make it look organic
-        time.sleep(random.uniform(1.0, 4.0))
+        time.sleep(random.uniform(4.0, 7.0))
 
 if __name__ == "__main__":
     run_simulation()
