@@ -4,6 +4,7 @@ import hashlib
 import time
 import json
 import logging
+import traceback
 from typing import Optional, Dict, Any
 from fastapi import FastAPI, HTTPException, Request, Depends, status, Header
 from fastapi.staticfiles import StaticFiles
@@ -543,6 +544,7 @@ def settle_escrow(req: EscrowSettleRequest):
             proof_of_work=req.verification.proof_of_work,
             proof_artifacts=req.verification.proof_artifacts
         )
+        logger.info(f"SETTLE decision mandate={req.mandate_id} schema={decision.schema_used} passed={decision.passed} reason={decision.reason}")
         
         # 2. Log security events for injection attempts
         if decision.schema_used == "INJECTION_BLOCKED":
@@ -603,6 +605,11 @@ def settle_escrow(req: EscrowSettleRequest):
                 "refund_amount": round(refund_amount, 2)
             }
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"SETTLE_FAILED mandate={req.mandate_id}: {e}\n{traceback.format_exc()}")
+        raise
     finally:
         redis_client.delete(lock_key)
 
