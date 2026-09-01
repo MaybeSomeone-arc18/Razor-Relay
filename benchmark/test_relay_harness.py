@@ -195,7 +195,7 @@ def test_scenario_10_chaos_open():
 
 def test_scenario_11_chaos_half_open():
     """Scenario 11: Switch health in HALF_OPEN range -> Triggers token-bucket failover routing."""
-    client.post("/v1/relay/chaos/inject", json={"latency_ms": 100.0, "rolling_error_rate": 0.0}, headers={"X-Admin-Key": "demo_admin_key"})
+    client.post("/v1/relay/chaos/inject", json={"latency_ms": 700.0, "rolling_error_rate": 0.0}, headers={"X-Admin-Key": "demo_admin_key"})
     
     payload, agent_keys = generate_valid_payload()
     response = client.post("/v1/relay/gateway/execute", json=payload)
