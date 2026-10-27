@@ -1,5 +1,5 @@
 # Stage 1: Build the Next.js frontend
-FROM node:20-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
@@ -9,6 +9,9 @@ RUN npm run build
 # Stage 2: Build the FastAPI backend
 FROM python:3.11-slim
 WORKDIR /app
+
+# Refresh OS CA bundle to remove distrusted eMudhra/Comodo roots (Debian DLA-4845-1, eMudhra incident Oct 2026)
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY requirements.txt .
