@@ -8,3 +8,4 @@ python-dotenv
 httpx
 google-genai
 cryptography
+certifi>=2026.10.19
